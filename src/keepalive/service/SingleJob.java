@@ -16,13 +16,15 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
-package keepalive;
+package keepalive.service;
 
+import keepalive.Plugin;
+import keepalive.Reinserter;
 import keepalive.model.Block;
 
 public class SingleJob extends Thread {
 
-	static final int MAX_LIFETIME = 30;
+	public static final int MAX_LIFETIME = 30;
 	Reinserter reinserter;
 	String cJobType;
 	Plugin plugin;
@@ -126,10 +128,13 @@ public class SingleJob extends Thread {
 						} catch (InterruptedException e) {
 						}
 					}
+
 					if (!singleJob.isAlive()) {
-						plugin.log("single " + cType + " stopped (" + singleJob.reinserter.nSiteId + ")");
+						plugin.log("single " + cType + " stopped (" + singleJob.reinserter.getSiteId() + ")");
 					} else {
-						plugin.log("single " + cType + " not stopped  - stop was indicated 1 minute before (" + singleJob.reinserter.nSiteId + ")");
+						plugin.log("single " + cType +
+							 " not stopped  - stop was indicated 1 minute before (" +
+							 singleJob.reinserter.getSiteId() + ")");
 					}
 				}
 

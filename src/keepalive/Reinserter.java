@@ -65,20 +65,23 @@ import java.util.zip.ZipInputStream;
 
 import keepalive.model.Block;
 import keepalive.model.Segment;
+import keepalive.service.SingleFetch;
+import keepalive.service.SingleInsert;
+import keepalive.service.SingleJob;
 import org.apache.tools.tar.TarInputStream;
 
 public class Reinserter extends Thread {
 
 	public Plugin plugin;
 	private PluginRespirator pr;
-	protected int nSiteId;
+	private int nSiteId;
 	private long nLastActivityTime;
 	private HashMap<FreenetURI, Metadata> mManifestURIs;
 	private HashMap<FreenetURI, Block> mBlocks;
 	private long nLastSaveTime = 0;
 	private int nParsedSegmentId;
 	private int nParsedBlockId;
-	protected ArrayList<Segment> vSegments = new ArrayList<>();
+	private ArrayList<Segment> vSegments = new ArrayList<>();
 	public int nActiveSingleJobCount = 0;
 
 	private RequestClient rc = new RequestClient() {
@@ -1372,5 +1375,13 @@ public class Reinserter extends Thread {
 				plugin.log("Reinserter.ActivityGuard.run(): " + e.getMessage(), 0);
 			}
 		}
+	}
+
+	public int getSiteId() {
+		return nSiteId;
+	}
+
+	public ArrayList<Segment> getSegments() {
+		return vSegments;
 	}
 }

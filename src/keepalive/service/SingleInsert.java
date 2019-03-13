@@ -16,13 +16,14 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
-package keepalive;
+package keepalive.service;
 
 import freenet.client.InsertBlock;
 import freenet.client.InsertContext;
 import freenet.client.InsertException;
 import freenet.keys.FreenetURI;
 import freenet.support.compress.Compressor;
+import keepalive.Reinserter;
 import keepalive.model.Block;
 import keepalive.model.Segment;
 
@@ -70,14 +71,14 @@ public class SingleInsert extends SingleJob {
 				}
 			}
 
-			Segment segment = reinserter.vSegments.get(block.getSegmentId());
+			Segment segment = reinserter.getSegments().get(block.getSegmentId());
 			// insert
 			if (block.getBucket() != null) {
 				FreenetURI insertUri;
 
 				try {
 					InsertBlock insertBlock = new InsertBlock(block.getBucket(), null, fetchUri);
-					InsertContext insertContext = plugin.hlsc.getInsertContext(true);
+					InsertContext insertContext = plugin.getFreenetClient().getInsertContext(true);
 					if (cCompressorI != null && !cCompressorI.equals("none")) {
 						insertContext.compressorDescriptor = cCompressorI;
 					}
@@ -92,7 +93,7 @@ public class SingleInsert extends SingleJob {
 					//re-insert top blocks and single key files at very high priority, all others at medium prio.
 					short prio = segment.size() == 1 ? (short) 1 : (short) 3;
 
-					insertUri = plugin.hlsc.insert(insertBlock, null, false, prio, insertContext, fetchUri.getCryptoKey());
+					insertUri = plugin.getFreenetClient().insert(insertBlock, null, false, prio, insertContext, fetchUri.getCryptoKey());
 
 					// insert finished
 					if (!reinserter.isActive()) {

@@ -204,4 +204,8 @@ public class Plugin extends PluginBase {
 		}
 		log("plugin terminated", 0);
 	}
+
+	public HighLevelSimpleClientImpl getFreenetClient() {
+		return hlsc;
+	}
 }
