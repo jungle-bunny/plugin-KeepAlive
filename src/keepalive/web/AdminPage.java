@@ -16,13 +16,14 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
-package keepalive;
+package keepalive.web;
 
 import freenet.keys.FreenetURI;
 import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URLDecoder;
 
+import keepalive.Plugin;
 import keepalive.util.Debug;
 import pluginbase.PageBase;
 
@@ -30,7 +31,7 @@ public class AdminPage extends PageBase {
 
 	private Plugin plugin;
 
-	AdminPage(Plugin plugin) {
+	public AdminPage(Plugin plugin) {
 		super("", "Keep Alive", plugin, true);
 		this.plugin = plugin;
 		addPageToMenu("Start reinsertion of sites", "Add or remove sites you like to reinsert");

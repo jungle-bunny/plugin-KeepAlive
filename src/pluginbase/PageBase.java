@@ -243,9 +243,7 @@ abstract public class PageBase extends Toadlet implements FredPluginL10n {
 	protected String html(String name) throws Exception {
 		try (InputStream stream =
 						getClass()
-							 .getResourceAsStream("/"
-									+ getClass().getPackage().getName().replace('.', '/')
-									+ "/templates/" + name + ".html")) {
+							 .getResourceAsStream("/resources/templates/" + name + ".html")) {
 
 			ByteArrayOutputStream content = new ByteArrayOutputStream();
 

@@ -20,6 +20,7 @@ package keepalive;
 
 import freenet.client.HighLevelSimpleClientImpl;
 import freenet.pluginmanager.PluginRespirator;
+import keepalive.web.AdminPage;
 import pluginbase.PluginBase;
 
 public class Plugin extends PluginBase {
