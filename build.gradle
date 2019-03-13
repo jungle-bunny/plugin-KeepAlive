@@ -28,7 +28,7 @@ jar {
 }
 
 processResources {
-    from ('src/keepalive/html/') {
-        into 'keepalive/html'
+    from ('src/keepalive/templates/') {
+        into 'keepalive/templates'
     }
 }

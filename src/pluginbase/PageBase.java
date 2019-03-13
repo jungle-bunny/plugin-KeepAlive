@@ -28,9 +28,12 @@ import freenet.l10n.BaseL10n.LANGUAGE;
 import freenet.pluginmanager.*;
 import freenet.support.api.HTTPRequest;
 import freenet.support.HTMLNode;
+
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.IOException;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.TreeMap;
 import java.util.ArrayList;
 
@@ -237,19 +240,21 @@ abstract public class PageBase extends Toadlet implements FredPluginL10n {
 		}
 	}
 
-	protected String html(String cName) throws Exception {
-		try {
+	protected String html(String name) throws Exception {
+		try (InputStream stream =
+						getClass()
+							 .getResourceAsStream("/"
+									+ getClass().getPackage().getName().replace('.', '/')
+									+ "/templates/" + name + ".html")) {
 
-			byte[] aContent = new byte[1024];
-			String cContent;
-			try (InputStream stream = getClass().getResourceAsStream("/" + getClass().getPackage().getName().replace('.', '/') + "/html/" + cName)) {
-				int nLen;
-				cContent = "";
-				while ((nLen = stream.read(aContent)) != -1) {
-					cContent += new String(aContent, 0, nLen, "UTF-8");
-				}
-			}
-			return cContent;
+			ByteArrayOutputStream content = new ByteArrayOutputStream();
+
+			int len;
+			byte[] contentBytes = new byte[1024];
+			while ((len = stream.read(contentBytes)) != -1)
+				content.write(contentBytes, 0, len);
+
+			return content.toString(StandardCharsets.UTF_8.name());
 
 		} catch (IOException e) {
 			throw new Exception("PageBase.html(): " + e.getMessage());
