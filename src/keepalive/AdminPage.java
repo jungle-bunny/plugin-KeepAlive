@@ -23,6 +23,7 @@ import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URLDecoder;
 
+import keepalive.util.Debug;
 import pluginbase.PageBase;
 
 public class AdminPage extends PageBase {
@@ -106,7 +107,7 @@ public class AdminPage extends PageBase {
 				 html("info").replaceAll("#1", plugin.getVersion()));
 
 		} catch (Exception e) {
-			log("AdminPage.handleRequest(): " + e.getMessage());
+			log("AdminPage.handleRequest(): " + Debug.stackTrace(e));
 		}
 	}
 
@@ -327,7 +328,7 @@ public class AdminPage extends PageBase {
 			}
 
 		} catch (Exception e) {
-			log("AdminPage.updateUskEdition(): " + e.getMessage());
+			log("AdminPage.updateUskEdition(): " + Debug.stackTrace(e));
 		}
 	}
 
@@ -341,7 +342,7 @@ public class AdminPage extends PageBase {
 				return uri;
 
 		} catch (Exception e) {
-			log("AdminPage.getShortUri(): " + e.getMessage(), 0);
+			log("AdminPage.getShortUri(): " + Debug.stackTrace(e));
 			return null;
 		}
 	}
@@ -363,7 +364,7 @@ public class AdminPage extends PageBase {
 			saveProp();
 
 		} catch (Exception e) {
-			log("AdminPage.setPropByParam(): " + e.getMessage(), 0);
+			log("AdminPage.setPropByParam(): " + Debug.stackTrace(e));
 		}
 	}
 
@@ -375,8 +376,8 @@ public class AdminPage extends PageBase {
 					return true;
 				}
 			}
-		} catch (Exception ex) {
-			log("AdminPage.isDuplicate(): " + ex.getMessage(), 0);
+		} catch (Exception e) {
+			log("AdminPage.isDuplicate(): " + Debug.stackTrace(e));
 		}
 		return false;
 	}
