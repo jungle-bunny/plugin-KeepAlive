@@ -18,6 +18,8 @@
  */
 package keepalive;
 
+import keepalive.model.Block;
+
 public class SingleJob extends Thread {
 
 	static final int MAX_LIFETIME = 30;
@@ -59,13 +61,13 @@ public class SingleJob extends Thread {
 			if (reinserter.isActive()) {
 
 				// log
-				String cFirstLog = cJobType + ": " + block.uri;
-				if (!block.bFetchSuccessfull && !block.bInsertSuccessfull) {
+				String cFirstLog = cJobType + ": " + block.getUri();
+				if (!block.getFetchSuccessful() && !block.getInsertSuccessful()) {
 					cFirstLog = "<b>" + cFirstLog + "</b>";
-					block.cResultLog = "<b>" + block.cResultLog + "</b>";
+					block.setResultLog("<b>" + block.getResultLog() + "</b>");
 				}
 				log(cFirstLog);
-				log(block.cResultLog);
+				log(block.getResultLog());
 
 				// finish
 				reinserter.nActiveSingleJobCount--;
@@ -79,7 +81,7 @@ public class SingleJob extends Thread {
 
 	protected void log(String cMessage, int nLogLevel) {
 		if (reinserter.isActive()) {
-			reinserter.log(block.nSegmentId, cMessage, 0, nLogLevel);
+			reinserter.log(block.getSegmentId(), cMessage, 0, nLogLevel);
 		}
 	}
 
@@ -111,7 +113,7 @@ public class SingleJob extends Thread {
 				// has timeout stop 
 				if (reinserter.isActive() && singleJob.isAlive()) {
 					singleJob.stop();
-					singleJob.block.cResultLog += "<b>-> " + cJobType + " aborted (timeout)</b>";
+					singleJob.block.appendResultLog("<b>-> " + cJobType + " aborted (timeout)</b>");
 				}
 
 				// has stopped after reinserter stop

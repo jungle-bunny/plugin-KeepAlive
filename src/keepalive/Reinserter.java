@@ -62,6 +62,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.zip.ZipInputStream;
+
+import keepalive.model.Block;
+import keepalive.model.Segment;
 import org.apache.tools.tar.TarInputStream;
 
 public class Reinserter extends Thread {
@@ -172,7 +175,7 @@ public class Reinserter extends Thread {
 			// max segment id
 			int nMaxSegmentId = -1;
 			for (Block block : mBlocks.values()) {
-				nMaxSegmentId = Math.max(nMaxSegmentId, block.nSegmentId);
+				nMaxSegmentId = Math.max(nMaxSegmentId, block.getSegmentId());
 			}
 
 			// init reinsertion
@@ -235,7 +238,7 @@ public class Reinserter extends Thread {
 				// next segment
 				int nSegmentSize = 0;
 				for (Block block : mBlocks.values()) {
-					if (block.nSegmentId == vSegments.size()) {
+					if (block.getSegmentId() == vSegments.size()) {
 						nSegmentSize++;
 					}
 				}
@@ -244,7 +247,7 @@ public class Reinserter extends Thread {
 				}
 				Segment segment = new Segment(this, vSegments.size(), nSegmentSize);
 				for (Block block : mBlocks.values()) {
-					if (block.nSegmentId == vSegments.size()) {
+					if (block.getSegmentId() == vSegments.size()) {
 						segment.addBlock(block);
 					}
 				}
@@ -293,7 +296,7 @@ public class Reinserter extends Thread {
 					int nSuccessful = 0;
 					int nFailed = 0;
 					for (Block vRequestedBlock : vRequestedBlocks) {
-						while (!vRequestedBlock.bFetchDone) {
+						while (vRequestedBlock.isFetchInProcess()) {
 							synchronized (this) {
 								this.wait(1000);
 							}
@@ -303,7 +306,7 @@ public class Reinserter extends Thread {
 						}
 						checkFinishedSegments();
 						isActive(true);
-						if (vRequestedBlock.bFetchSuccessfull) {
+						if (vRequestedBlock.isFetchSuccessful()) {
 							nSuccessful++;
 						} else {
 							nFailed++;
@@ -350,14 +353,14 @@ public class Reinserter extends Thread {
 							checkFinishedSegments();
 							isActive(true);
 							// fetch next block that has not been fetched yet
-							if (!vRequestedBlock.bFetchDone) {
+							if (vRequestedBlock.isFetchInProcess()) {
 								SingleFetch fetch = new SingleFetch(this, vRequestedBlock, true);
 								fetch.start();
 							}
 						}
 
 						for (Block vRequestedBlock : vRequestedBlocks) {
-							while (!vRequestedBlock.bFetchDone) {
+							while (vRequestedBlock.isFetchInProcess()) {
 								synchronized (this) {
 									this.wait(1000);
 								}
@@ -367,7 +370,7 @@ public class Reinserter extends Thread {
 							}
 							checkFinishedSegments();
 							isActive(true);
-							if (vRequestedBlock.bFetchSuccessfull) {
+							if (vRequestedBlock.isFetchSuccessful()) {
 								nSuccessful++;
 							} else {
 								nFailed++;
@@ -400,8 +403,8 @@ public class Reinserter extends Thread {
 						boolean[] dataBlocksPresent = new boolean[dataBlocks.length];
 						boolean[] checkBlocksPresent = new boolean[checkBlocks.length];
 						for (int i = 0; i < dataBlocks.length; i++) {
-							if (segment.getDataBlock(i).bFetchSuccessfull) {
-								dataBlocks[i] = segment.getDataBlock(i).bucket.toByteArray();
+							if (segment.getDataBlock(i).isFetchSuccessful()) {
+								dataBlocks[i] = segment.getDataBlock(i).getBucket().toByteArray();
 								dataBlocksPresent[i] = true;
 							} else {
 								dataBlocks[i] = new byte[CHKBlock.DATA_LENGTH];
@@ -409,8 +412,8 @@ public class Reinserter extends Thread {
 							}
 						}
 						for (int i = 0; i < checkBlocks.length; i++) {
-							if (segment.getCheckBlock(i).bFetchSuccessfull) {
-								checkBlocks[i] = segment.getCheckBlock(i).bucket.toByteArray();
+							if (segment.getCheckBlock(i).isFetchSuccessful()) {
+								checkBlocks[i] = segment.getCheckBlock(i).getBucket().toByteArray();
 								checkBlocksPresent[i] = true;
 							} else {
 								checkBlocks[i] = new byte[CHKBlock.DATA_LENGTH];
@@ -439,7 +442,7 @@ public class Reinserter extends Thread {
 						} catch (Exception e) {
 							log(segment, "<b>segment decoding (FEC) failed, do not reinsert</b>", 1, 2);
 							updateSegmentStatistic(segment, false);
-							segment.bHealingNotPossible = true;
+							segment.setHealingNotPossible(true);
 							checkFinishedSegments();
 							continue;
 						}
@@ -452,7 +455,7 @@ public class Reinserter extends Thread {
 						} catch (Exception e) {
 							log(segment, "<b>segment encoding (FEC) failed, do not reinsert</b>", 1, 2);
 							updateSegmentStatistic(segment, false);
-							segment.bHealingNotPossible = true;
+							segment.setHealingNotPossible(true);
 							checkFinishedSegments();
 							continue;
 						}
@@ -460,11 +463,11 @@ public class Reinserter extends Thread {
 						// finish
 						for (int i = 0; i < dataBlocks.length; i++) {
 							log(segment, "dataBlock_" + i, dataBlocks[i]);
-							segment.getDataBlock(i).bucket = new ArrayBucket(dataBlocks[i]);
+							segment.getDataBlock(i).setBucket(new ArrayBucket(dataBlocks[i]));
 						}
 						for (int i = 0; i < checkBlocks.length; i++) {
 							log(segment, "checkBlock_" + i, checkBlocks[i]);
-							segment.getCheckBlock(i).bucket = new ArrayBucket(checkBlocks[i]);
+							segment.getCheckBlock(i).setBucket(new ArrayBucket(checkBlocks[i]));
 						}
 						log(segment, "segment healing (FEC) successful, start with reinsertion", 0, 1);
 						updateSegmentStatistic(segment, true);
@@ -489,7 +492,7 @@ public class Reinserter extends Thread {
 						checkFinishedSegments();
 						isActive(true);
 						if (segment.size() > 1) {
-							if (segment.getBlock(i).bFetchSuccessfull) {
+							if (segment.getBlock(i).isFetchSuccessful()) {
 								segment.regFetchSuccess(true);
 							} else {
 								segment.regFetchSuccess(false);
@@ -627,10 +630,10 @@ public class Reinserter extends Thread {
 						file.writeBytes("\n");
 					}
 					String cType = "d";
-					if (!block.bIsDataBlock) {
+					if (!block.isDataBlock()) {
 						cType = "c";
 					}
-					file.writeBytes(block.uri.toString() + "#" + block.nSegmentId + "#" + block.nId + "#" + cType);
+					file.writeBytes(block.getUri().toString() + "#" + block.getSegmentId() + "#" + block.getId() + "#" + cType);
 				}
 			}
 
@@ -1204,7 +1207,7 @@ public class Reinserter extends Thread {
 	public void registerBlockFetchSuccess(Block block) {
 		try {
 
-			vSegments.get(block.nSegmentId).regFetchSuccess(block.bFetchSuccessfull);
+			vSegments.get(block.getSegmentId()).regFetchSuccess(block.isFetchSuccessful());
 
 		} catch (Exception e) {
 			plugin.log("Reinserter.registerBlockSuccess(): " + e.getMessage(), 0);
@@ -1216,7 +1219,7 @@ public class Reinserter extends Thread {
 
 			String cSuccess = plugin.getProp("success_segments_" + nSiteId);
 			if (bSuccess) {
-				cSuccess = cSuccess.substring(0, segment.nId) + "1" + cSuccess.substring(segment.nId + 1);
+				cSuccess = cSuccess.substring(0, segment.getId()) + "1" + cSuccess.substring(segment.getId() + 1);
 			}
 			plugin.setProp("success_segments_" + nSiteId, cSuccess);
 			plugin.saveProp();
@@ -1308,7 +1311,7 @@ public class Reinserter extends Thread {
 	}
 
 	public void log(Segment segment, String cMessage, int nLevel, int nLogLevel) {
-		log(segment.nId, cMessage, nLevel, nLogLevel);
+		log(segment.getId(), cMessage, nLevel, nLogLevel);
 	}
 
 	public void log(Segment segment, String cMessage, int nLevel) {

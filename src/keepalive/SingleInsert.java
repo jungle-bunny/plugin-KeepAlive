@@ -23,6 +23,8 @@ import freenet.client.InsertContext;
 import freenet.client.InsertException;
 import freenet.keys.FreenetURI;
 import freenet.support.compress.Compressor;
+import keepalive.model.Block;
+import keepalive.model.Segment;
 
 public class SingleInsert extends SingleJob {
 
@@ -42,9 +44,9 @@ public class SingleInsert extends SingleJob {
 		try {
 
 			//HighLevelSimpleClientImpl hlsc = (HighLevelSimpleClientImpl) plugin.pluginContext.hlsc;
-			FreenetURI fetchUri = block.uri.clone();
-			block.bInsertDone = false;
-			block.bInsertSuccessfull = false;
+			FreenetURI fetchUri = block.getUri().clone();
+			block.setInsertDone(false);
+			block.setInsertSuccessful(false);
 
 			// modify the control flag of the URI to get always the raw data
 			byte[] aExtraI = fetchUri.getExtra();
@@ -59,7 +61,7 @@ public class SingleInsert extends SingleJob {
 			}
 
 			// fetch
-			if (block.bucket == null) {
+			if (block.getBucket() == null) {
 				SingleFetch singleFetch = new SingleFetch(reinserter, block, false);
 				singleFetch.start();
 				singleFetch.join();
@@ -68,13 +70,13 @@ public class SingleInsert extends SingleJob {
 				}
 			}
 
-			Segment segment = reinserter.vSegments.get(block.nSegmentId);
+			Segment segment = reinserter.vSegments.get(block.getSegmentId());
 			// insert
-			if (block.bucket != null) {
+			if (block.getBucket() != null) {
 				FreenetURI insertUri;
 
 				try {
-					InsertBlock insertBlock = new InsertBlock(block.bucket, null, fetchUri);
+					InsertBlock insertBlock = new InsertBlock(block.getBucket(), null, fetchUri);
 					InsertContext insertContext = plugin.hlsc.getInsertContext(true);
 					if (cCompressorI != null && !cCompressorI.equals("none")) {
 						insertContext.compressorDescriptor = cCompressorI;
@@ -99,7 +101,7 @@ public class SingleInsert extends SingleJob {
 					int nSiteId = plugin.getIntProp("reinserter_site_id");
 					if (insertUri != null) {
 						if (fetchUri.equals(insertUri)) {
-							block.bInsertSuccessfull = true;
+							block.setInsertSuccessful(true);
 							block.setResultLog("-> inserted: " + insertUri.toString());
 						} else {
 							block.setResultLog("-> insertion failed - different uri: " + insertUri.toString());
@@ -118,11 +120,11 @@ public class SingleInsert extends SingleJob {
 
 			// reg success if single-block-segment
 			if (segment.size() == 1) {
-				reinserter.updateSegmentStatistic(segment, block.bInsertSuccessfull);
+				reinserter.updateSegmentStatistic(segment, block.getInsertSuccessful());
 			}
 
 			// finish
-			block.bInsertDone = true;
+			block.setInsertDone(true);
 			finish();
 
 		} catch (Exception e) {

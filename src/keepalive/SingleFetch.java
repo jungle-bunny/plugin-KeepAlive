@@ -25,6 +25,8 @@ import freenet.client.HighLevelSimpleClientImpl;
 import freenet.keys.FreenetURI;
 import freenet.support.compress.Compressor;
 import freenet.support.io.ArrayBucket;
+import keepalive.model.Block;
+
 import java.io.IOException;
 
 public class SingleFetch extends SingleJob {
@@ -48,9 +50,9 @@ public class SingleFetch extends SingleJob {
 			//HighLevelSimpleClientImpl hlsc = (HighLevelSimpleClientImpl) plugin.pluginContext.node.clientCore.makeClient((short) 3, false, false);
 			HLSCignoreStore hlscIgnoreStore = new HLSCignoreStore(plugin.hlsc);
 
-			FreenetURI fetchUri = block.uri.clone();
-			block.bFetchDone = false;
-			block.bFetchSuccessfull = false;
+			FreenetURI fetchUri = block.getUri().clone();
+			block.setFetchDone(false);
+			block.setFetchSuccessful(false);
 
 			// modify the control flag of the URI to get always the raw data
 			byte[] aExtraF = fetchUri.getExtra();
@@ -67,7 +69,7 @@ public class SingleFetch extends SingleJob {
 			// request
 			try {
 
-				log("request: " + block.uri.toString() + " (crypt=" + aExtraF[1] + ",control=" + block.uri.getExtra()[2] + ",compress=" + aExtraF[4] + "=" + cCompressorF + ")", 2);
+				log("request: " + block.getUri().toString() + " (crypt=" + aExtraF[1] + ",control=" + block.getUri().getExtra()[2] + ",compress=" + aExtraF[4] + "=" + cCompressorF + ")", 2);
 				if (!bPersistenceCheck) {
 					fetchResult = plugin.hlsc.fetch(fetchUri);
 				} else {
@@ -79,19 +81,19 @@ public class SingleFetch extends SingleJob {
 			}
 
 			// log / success flag
-			if (block.cResultLog == null) {
+			if (block.getResultLog() == null) {
 				if (fetchResult == null) {
 					block.setResultLog("-> fetch failed");
 				} else {
-					block.bucket = new ArrayBucket(fetchResult.asByteArray());
-					block.bFetchSuccessfull = true;
+					block.setBucket(new ArrayBucket(fetchResult.asByteArray()));
+					block.setFetchSuccessful(true);
 					block.setResultLog("-> fetch successful");
 				}
 			}
 
 			//finish
 			reinserter.registerBlockFetchSuccess(block);
-			block.bFetchDone = true;
+			block.setFetchDone(true);
 			finish();
 
 		} catch (IOException e) {
