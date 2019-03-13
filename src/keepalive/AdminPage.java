@@ -22,15 +22,16 @@ import freenet.keys.FreenetURI;
 import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URLDecoder;
+
 import pluginbase.PageBase;
 
 public class AdminPage extends PageBase {
 
-	Plugin kaPlugin;
+	private Plugin plugin;
 
-	public AdminPage(Plugin plugin) {
+	AdminPage(Plugin plugin) {
 		super("", "Keep Alive", plugin, true);
-		this.kaPlugin = plugin;
+		this.plugin = plugin;
 		addPageToMenu("Start reinsertion of sites", "Add or remove sites you like to reinsert");
 	}
 
@@ -40,12 +41,12 @@ public class AdminPage extends PageBase {
 
 			// start reinserter
 			if (getParam("start") != null) {
-				kaPlugin.startReinserter(getIntParam("start"));
+				plugin.startReinserter(getIntParam("start"));
 			}
 
 			// stop reinserter
 			if (getParam("stop") != null) {
-				kaPlugin.stopReinserter();
+				plugin.stopReinserter();
 			}
 
 			// modify power
@@ -74,7 +75,7 @@ public class AdminPage extends PageBase {
 
 			// clear logs
 			if (getParam("clear_logs") != null) {
-				kaPlugin.clearAllLogs();
+				plugin.clearAllLogs();
 			}
 
 			// clear history
@@ -84,210 +85,260 @@ public class AdminPage extends PageBase {
 
 			// add uris
 			if (getParam("uris") != null) {
-				String[] splitURIs = getParam("uris").split("\n");
-				for (String splitURI : splitURIs) {
-					// validate
-					String cUriOrig = URLDecoder.decode(splitURI, "UTF8").trim();
-					if (cUriOrig.equals("")) {
-						continue;  //ignore blank lines.
-					}
-					String cUri = cUriOrig;
-					int nBegin = cUri.indexOf("@") - 3;
-					if (nBegin > 0) {
-						cUri = cUri.substring(nBegin);
-					}
-					boolean bValid = true;
-					try {
-						FreenetURI uri = new FreenetURI(cUri);
-						cUri = uri.toString();
-					} catch (MalformedURLException e) {
-						bValid = false;
-						addBox("URI not valid!", "You have typed:<br><br>" + cUriOrig);
-					}
-
-					// add if not already on the list.
-					if (bValid && !isDuplicate(cUri)) {
-						int[] aIds = kaPlugin.getIds();
-						int nId;
-						if (aIds.length == 0) {
-							nId = 0;
-						} else {
-							nId = aIds[aIds.length - 1] + 1;
-						}
-						setProp("ids", getProp("ids") + nId + ",");
-						setProp("uri_" + nId, cUri);
-						setProp("blocks_" + nId, "?");
-						setProp("success_" + nId, "");
-						setIntProp("segment_" + nId, -1);
-					}
-				}
+				addUris();
 			}
 
 			// remove uri
 			if (getParam("remove") != null) {
-
-				// stop reinserter
-				int nId = getIntParam("remove");
-				if (nId == kaPlugin.getIntProp("active")) {
-					kaPlugin.stopReinserter();
-				}
-
-				// remove log and key files
-				File file = new File(kaPlugin.getPluginDirectory() + kaPlugin.getLogFilename(nId));
-				if (file.exists()) {
-					file.delete();
-				}
-				file = new File(kaPlugin.getPluginDirectory() + kaPlugin.getBlockListFilename(nId));
-				if (file.exists()) {
-					file.delete();
-				}
-
-				// remove items
-				removeProp("uri_" + nId);
-				removeProp("blocks_" + nId);
-				removeProp("success_" + nId);
-				removeProp("success_segments_" + nId);
-				removeProp("segment_" + nId);
-				removeProp("history_" + nId);
-				String cIds = ("," + getProp("ids")).replaceAll("," + nId + ",", ",");
-				setProp("ids", cIds.substring(1));
-				saveProp();
-
+				removeUri();
 			}
 
-			// unsupported keys box
-			int[] aIds = kaPlugin.getIds();
-			String cZeroBlockSites = "";
-			for (int i = 0; i < aIds.length; i++) {
-				if (getProp("blocks_" + aIds[i]).equals("0")) {
-					if (cZeroBlockSites.length() > 0) {
-						cZeroBlockSites += "<br>";
-					}
-					cZeroBlockSites += getProp("uri_" + aIds[i]);
-				}
-			}
-			if (cZeroBlockSites.length() > 0) {
-				addBox("Unsupported keys", html("unsupported_keys").replaceAll("#", cZeroBlockSites));
-			}
-
-			// sites box
-			String cHtml = html("add_key") + "<br><table><tr style=\"text-align:center;\"><td style='border:0'></td><td>total<br>blocks</td><td>available<br>blocks</td><td>missed<br>blocks</td><td>blocks<br>availability</td><td>segments<br>availability</td><td style='border:0'></td><td style='border:0'></td></tr>";
-			for (int i = 0; i < aIds.length; i++) {
-				int nId = aIds[i];
-				String cUri;
-				cUri = getProp("uri_" + nId);
-				int nSuccess = kaPlugin.getSuccessValues(nId)[0];
-				int nFailure = kaPlugin.getSuccessValues(nId)[1];
-				int nPersistence = 0;
-				if (nSuccess > 0) {
-					nPersistence = (int) ((double) nSuccess / (nSuccess + nFailure) * 100);
-				}
-				int nAvailableSegments = kaPlugin.getSuccessValues(nId)[2];
-				int nSegmentsAvailability = 0;
-				int nFinishedSegmentsCount = getIntProp("segment_" + nId) + 1;
-				if (nFinishedSegmentsCount > 0) {
-					nSegmentsAvailability = (int) ((double) nAvailableSegments / nFinishedSegmentsCount * 100);
-				}
-				cHtml += "<tr>"
-						+ "<td><a href='/" + cUri + "'>" + getShortUri(nId) + "</a></td>"
-						+ "<td align=\"center\">" + getProp("blocks_" + nId) + "</td>"
-						+ "<td align=\"center\">" + nSuccess + "</td>"
-						+ "<td align=\"center\">" + nFailure + "</td>"
-						+ "<td align=\"center\">" + nPersistence + " %</td>"
-						+ "<td align=\"center\">" + nSegmentsAvailability + " %</td>"
-						+ "<td><a href='?remove=" + nId + "'>remove</a></td>"
-						+ "<td><a href='?log=" + nId + "'>log</a></td>";
-				if (nId == getIntProp("active")) {
-					cHtml += "<td><a href='?stop=" + nId + "'>stop</a></td>";
-					cHtml += "<td><b>active</b></td>";
-				} else {
-					cHtml += "<td><a href='?start=" + nId + "'>start</a></td>";
-					cHtml += "<td></td>";
-				}
-				cHtml += "</tr>";
-			}
-			cHtml += "</table>";
-			addBox("Add or remove a key", cHtml);
-
-			// log box
-			if (getParam("master_log") != null || getParam("log") != null) {
-				String cLog;
-				if (getParam("master_log") != null) {
-					cLog = kaPlugin.getLog();
-				} else {
-					cLog = kaPlugin.getLog(kaPlugin.getLogFilename(getIntParam("log")));
-				}
-				if (cLog == null) {
-					cLog = "";
-				}
-				cHtml = ("<small>" + cLog + "</small>").replaceAll("\n", "<br>").replaceAll("  ", "&nbsp; &nbsp; ");
-				if (getParam("master_log") != null) {
-					addBox("Master log", cHtml);
-				} else {
-					addBox("Log for " + getShortUri(getIntParam("log")), cHtml);
-				}
-			}
-
-			// configuration box
-			cHtml = html("properties");
-			cHtml = cHtml.replaceAll("#1", getProp("power"));
-			cHtml = cHtml.replaceAll("#2", getProp("loglevel"));
-			cHtml = cHtml.replaceAll("#3", getProp("splitfile_tolerance"));
-			cHtml = cHtml.replaceAll("#4", getProp("splitfile_test_size"));
-			addBox("Configuration", cHtml);
-
-			// history box
-			cHtml = "<table>";
-			for (int i = 0; i < aIds.length; i++) {
-				cHtml += "<tr><td>" + getShortUri(aIds[i]) + "</td><td>";
-				if (getProp("history_" + aIds[i]) != null) {
-					cHtml += getProp("history_" + aIds[i]).replaceAll("-", "=").replaceAll(",", "%, ") + "%";
-				}
-				cHtml += "</td><td><a href=\"?clear_history=" + aIds[i] + "\">clear</a></td></tr>";
-			}
-			cHtml += "</table>";
-			addBox("Lowest rate of blocks availability (monthly)", cHtml);
+			// boxes
+			int[] ids = plugin.getIds();
+			unsupportedKeysBox(ids);
+			sitesBox(ids);
+			logBox();
+			configurationBox();
+			historyBox(ids);
 
 			// info box
-			cHtml = html("info");
-			cHtml = cHtml.replaceAll("#1", kaPlugin.getVersion());
-			addBox("Information", cHtml);
+			addBox("Information",
+				 html("info").replaceAll("#1", plugin.getVersion()));
 
 		} catch (Exception e) {
-			log("AdminPage.handleRequest(): " + e.getMessage(), 0);
+			log("AdminPage.handleRequest(): " + e.getMessage());
 		}
 	}
 
-	protected synchronized void updateUskEdition(int nSiteId) {
+	private void historyBox(int[] ids) throws Exception {
+		StringBuilder html = new StringBuilder("<table>");
+		for (int id : ids) {
+			html.append("<tr><td>")
+				 .append(getShortUri(id))
+				 .append("</td><td>");
+
+			if (getProp("history_" + id) != null)
+				html.append(getProp("history_" + id)
+					 .replaceAll("-", "=")
+					 .replaceAll(",", "%, "))
+					 .append("%");
+
+			html.append("</td><td><a href=\"?clear_history=")
+				 .append(id)
+				 .append("\">clear</a></td></tr>");
+		}
+		html.append("</table>");
+		addBox("Lowest rate of blocks availability (monthly)", html.toString());
+	}
+
+	private void configurationBox() throws Exception {
+		StringBuilder html = new StringBuilder(html("properties"));
+		html = new StringBuilder(html.toString().replaceAll("#1", getProp("power")));
+		html = new StringBuilder(html.toString().replaceAll("#2", getProp("loglevel")));
+		html = new StringBuilder(html.toString().replaceAll("#3", getProp("splitfile_tolerance")));
+		html = new StringBuilder(html.toString().replaceAll("#4", getProp("splitfile_test_size")));
+		addBox("Configuration", html.toString());
+	}
+
+	private void logBox() throws Exception {
+		if (getParam("master_log") != null || getParam("log") != null) {
+			String cLog;
+			if (getParam("master_log") != null)
+				cLog = plugin.getLog();
+			else
+				cLog = plugin.getLog(plugin.getLogFilename(getIntParam("log")));
+
+
+			if (cLog == null)
+				cLog = "";
+
+			StringBuilder html = new StringBuilder(
+				 ("<small>" + cLog + "</small>")
+						.replaceAll("\n", "<br>")
+						.replaceAll(" {2}", "&nbsp; &nbsp; "));
+
+			if (getParam("master_log") != null)
+				addBox("Master log", html.toString());
+			else
+				addBox("Log for " + getShortUri(getIntParam("log")), html.toString());
+		}
+	}
+
+	private void sitesBox(int[] ids) throws Exception {
+		StringBuilder html = new StringBuilder(html("add_key"))
+			 .append("<br><table><tr style=\"text-align:center;\">")
+			 .append("<td style='border:0'></td><td>total<br>blocks</td>")
+			 .append("<td>available<br>blocks</td><td>missed<br>blocks</td>")
+			 .append("<td>blocks<br>availability</td><td>segments<br>availability</td>")
+			 .append("<td style='border:0'></td><td style='border:0'></td>")
+			 .append("</tr>");
+
+		for (int id : ids) {
+			String uri = getProp("uri_" + id);
+			int success = plugin.getSuccessValues(id)[0];
+			int failure = plugin.getSuccessValues(id)[1];
+
+			int persistence = 0;
+			if (success > 0)
+				persistence = (int) ((double) success / (success + failure) * 100);
+
+			int availableSegments = plugin.getSuccessValues(id)[2];
+			int finishedSegmentsCount = getIntProp("segment_" + id) + 1;
+
+			int segmentsAvailability = 0;
+			if (finishedSegmentsCount > 0)
+				segmentsAvailability = (int) ((double) availableSegments / finishedSegmentsCount * 100);
+
+			html.append("<tr>" + "<td><a href='/")
+				 .append(uri)
+				 .append("'>")
+				 .append(getShortUri(id))
+				 .append("</a></td><td align=\"center\">")
+				 .append(getProp("blocks_" + id))
+				 .append("</td><td align=\"center\">")
+				 .append(success)
+				 .append("</td><td align=\"center\">")
+				 .append(failure)
+				 .append("</td><td align=\"center\">")
+				 .append(persistence)
+				 .append(" %</td><td align=\"center\">")
+				 .append(segmentsAvailability)
+				 .append(" %</td><td><a href='?remove=")
+				 .append(id)
+				 .append("'>remove</a></td><td><a href='?log=")
+				 .append(id)
+				 .append("'>log</a></td>");
+
+			if (id == getIntProp("active"))
+				html.append("<td><a href='?stop=")
+					 .append(id)
+					 .append("'>stop</a></td><td><b>active</b></td>");
+			else
+				html.append("<td><a href='?start=")
+					 .append(id)
+					 .append("'>start</a></td><td></td>");
+
+			html.append("</tr>");
+		}
+
+		html.append("</table>");
+		addBox("Add or remove a key", html.toString());
+	}
+
+	private void unsupportedKeysBox(int[] ids) throws Exception {
+		StringBuilder zeroBlockSites = new StringBuilder();
+		for (int id : ids) {
+			if (getProp("blocks_" + id).equals("0")) {
+				if (zeroBlockSites.length() > 0) {
+					zeroBlockSites.append("<br>");
+				}
+				zeroBlockSites.append(getProp("uri_" + id));
+			}
+		}
+
+		if (zeroBlockSites.length() > 0)
+			addBox("Unsupported keys",
+				 html("unsupported_keys").replaceAll("#", zeroBlockSites.toString()));
+	}
+
+	private void addUris() throws Exception {
+		for (String splitURI : getParam("uris").split("\n")) {
+			// validate
+			String uriOrig = URLDecoder.decode(splitURI, "UTF8").trim();
+			if (uriOrig.equals(""))
+				continue;  //ignore blank lines.
+
+			String uri = uriOrig;
+			int begin = uri.indexOf("@") - 3;
+			if (begin > 0) {
+				uri = uri.substring(begin);
+			}
+
+			boolean valid = true;
+			try {
+				uri = new FreenetURI(uri).toString();
+			} catch (MalformedURLException e) {
+				valid = false;
+				addBox("URI not valid!", "You have typed:<br><br>" + uriOrig);
+			}
+
+			// add if not already on the list.
+			if (valid && !isDuplicate(uri)) {
+				int[] aIds = plugin.getIds();
+				int nId;
+				if (aIds.length == 0) {
+					nId = 0;
+				} else {
+					nId = aIds[aIds.length - 1] + 1;
+				}
+				setProp("ids", getProp("ids") + nId + ",");
+				setProp("uri_" + nId, uri);
+				setProp("blocks_" + nId, "?");
+				setProp("success_" + nId, "");
+				setIntProp("segment_" + nId, -1);
+			}
+		}
+	}
+
+	private void removeUri() throws Exception {
+		// stop reinserter
+		int id = getIntParam("remove");
+		if (id == plugin.getIntProp("active"))
+			plugin.stopReinserter();
+
+		// remove log and key files
+		File file = new File(plugin.getPluginDirectory() + plugin.getLogFilename(id));
+		if (file.exists()) {
+			if (!file.delete())
+				log("AdminPage.removeUri(): remove log files was not successful.", 1);
+		}
+		file = new File(plugin.getPluginDirectory() + plugin.getBlockListFilename(id));
+		if (file.exists()) {
+			if (!file.delete())
+				log("AdminPage.removeUri(): remove key files was not successful.", 1);
+		}
+
+		// remove items
+		removeProp("uri_" + id);
+		removeProp("blocks_" + id);
+		removeProp("success_" + id);
+		removeProp("success_segments_" + id);
+		removeProp("segment_" + id);
+		removeProp("history_" + id);
+		String cIds = ("," + getProp("ids")).replaceAll("," + id + ",", ",");
+		setProp("ids", cIds.substring(1));
+		saveProp();
+	}
+
+	// TODO
+	protected synchronized void updateUskEdition(int siteId) {
 		try {
 
-			String cSiteUri = kaPlugin.getProp("uri_" + nSiteId);
-			String cId = "updateUskEdition" + System.currentTimeMillis();
-			fcp.sendClientGet(cId, cSiteUri);
-			int nSecs = 0;
-			while (nSecs < 300 && getMessage(cId, "AllData") == null) {
-				wait(1000);
-				nSecs++;
-			}
+			String siteUri = plugin.getProp("uri_" + siteId);
+			String id = "updateUskEdition" + System.currentTimeMillis();
+			fcp.sendClientGet(id, siteUri);
+
+			for (int secs = 0; secs < 300 && getMessage(id, "AllData") == null; secs++)
+				wait(1_000);
+
 			if (getRedirectURI() != null) {
-				kaPlugin.setProp("uri_" + nSiteId, getRedirectURI());
+				plugin.setProp("uri_" + siteId, getRedirectURI());
 				log("RedirectURI: " + getRedirectURI(), 1);
 			}
 
 		} catch (Exception e) {
-			log("AdminPage.updateUskEdition(): " + e.getMessage(), 0);
+			log("AdminPage.updateUskEdition(): " + e.getMessage());
 		}
 	}
 
-	private String getShortUri(int nSiteId) {
+	private String getShortUri(int siteId) {
 		try {
 
-			String cUri = getProp("uri_" + nSiteId);
-			if (cUri.length() > 80) {
-				return cUri.substring(0, 20) + "...." + cUri.substring(cUri.length() - 50);
-			} else {
-				return cUri;
-			}
+			String uri = getProp("uri_" + siteId);
+			if (uri.length() > 80)
+				return uri.substring(0, 20) + "...." + uri.substring(uri.length() - 50);
+			else
+				return uri;
 
 		} catch (Exception e) {
 			log("AdminPage.getShortUri(): " + e.getMessage(), 0);
@@ -298,15 +349,17 @@ public class AdminPage extends PageBase {
 	private void setIntPropByParam(String cPropName, int nMinValue) {
 		try {
 
-			int nValue = nMinValue;
+			int value = nMinValue;
+
 			try {
-				nValue = getIntParam(cPropName);
-			} catch (Exception e) {
+				value = getIntParam(cPropName);
+			} catch (Exception ignored) {
 			}
-			if (nValue != -1 && nValue < nMinValue) {
-				nValue = nMinValue;
-			}
-			setIntProp(cPropName, nValue);
+
+			if (value != -1 && value < nMinValue)
+				value = nMinValue;
+
+			setIntProp(cPropName, value);
 			saveProp();
 
 		} catch (Exception e) {
@@ -314,14 +367,11 @@ public class AdminPage extends PageBase {
 		}
 	}
 
-	public synchronized boolean isDuplicate(String cUri) {
-
+	private synchronized boolean isDuplicate(String uri) {
 		try {
-			String iId;
-			for (int i : kaPlugin.getIds()) {
-				iId = getProp("uri_" + i);
-				if (iId.equals(cUri)) {
-					addBox("Duplicate URI", "We are already keeping this key alive:<br><br>" + cUri);
+			for (int i : plugin.getIds()) {
+				if (getProp("uri_" + i).equals(uri)) {
+					addBox("Duplicate URI", "We are already keeping this key alive:<br><br>" + uri);
 					return true;
 				}
 			}
