@@ -41,11 +41,11 @@ public abstract class SingleJob extends Thread {
 		this.reinserter = reinserter;
 		this.jobType = jobType;
 		this.block = block;
-		this.plugin = reinserter.plugin;
+		this.plugin = reinserter.getPlugin();
 		this.setName("KeepAlive SingleJob");
 
 		// init
-		reinserter.nActiveSingleJobCount++;
+		reinserter.incrementActiveSingleJobCount();
 	}
 
 	@Override
@@ -96,7 +96,7 @@ public abstract class SingleJob extends Thread {
 				log(block.getResultLog());
 
 				// finish
-				reinserter.nActiveSingleJobCount--;
+				reinserter.decrementActiveSingleJobCount();
 			}
 
 		} catch (Exception e) {
