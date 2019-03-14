@@ -69,6 +69,7 @@ import keepalive.model.Segment;
 import keepalive.service.net.SingleFetch;
 import keepalive.service.net.SingleInsert;
 import keepalive.service.net.SingleJob;
+import keepalive.util.Debug;
 import org.apache.tools.tar.TarInputStream;
 
 public class Reinserter extends Thread {
@@ -279,19 +280,21 @@ public class Reinserter extends Thread {
 
 					// todo: duplicate code
 					// calculate persistence rate
-					double nPersistenceRate = (double) result.successful / (result.successful + result.failed);
-					if (nPersistenceRate >= (double) plugin.getIntProp("splitfile_tolerance") / 100) {
+					double persistenceRate = (double) result.successful / (result.successful + result.failed);
+					if (persistenceRate >= (double) plugin.getIntProp("splitfile_tolerance") / 100) {
 						doReinsertions = false;
-						segment.regFetchSuccess(nPersistenceRate);
+						segment.regFetchSuccess(persistenceRate);
 						updateSegmentStatistic(segment, true);
-						log(segment, "availability of segment ok: " + ((int) (nPersistenceRate * 100)) + "% (approximated)", 0, 1);
+						log(segment, "availability of segment ok: " + ((int) (persistenceRate * 100)) +
+							 "% (approximated)", 0, 1);
 						checkFinishedSegments();
 						if (plugin.getIntProp("segment_" + siteId) != maxSegmentId) {
 							log(segment, "-> segment not reinserted; moving on will resume on next pass.", 0, 1);
 							break;
 						}
 					} else {
-						log(segment, "<b>availability of segment not ok: " + ((int) (nPersistenceRate * 100)) + "% (approximated)</b>", 0, 1);
+						log(segment, "<b>availability of segment not ok: " +
+							 ((int) (persistenceRate * 100)) + "% (approximated)</b>", 0, 1);
 						log(segment, "-> fetch all available blocks now", 0, 1);
 					}
 
@@ -318,19 +321,21 @@ public class Reinserter extends Thread {
 
 						// todo: duplicate code
 						// calculate persistence rate
-						nPersistenceRate = (double) result.successful / (result.successful + result.failed);
-						if (nPersistenceRate >= (double) plugin.getIntProp("splitfile_tolerance") / 100.0) {
+						persistenceRate = (double) result.successful / (result.successful + result.failed);
+						if (persistenceRate >= (double) plugin.getIntProp("splitfile_tolerance") / 100.0) {
 							doReinsertions = false;
-							segment.regFetchSuccess(nPersistenceRate);
+							segment.regFetchSuccess(persistenceRate);
 							updateSegmentStatistic(segment, true);
-							log(segment, "availability of segment ok: " + ((int) (nPersistenceRate * 100)) + "% (exact)", 0, 1);
+							log(segment, "availability of segment ok: " + ((int) (persistenceRate * 100)) +
+								 "% (exact)", 0, 1);
 							checkFinishedSegments();
 							if (plugin.getIntProp("segment_" + siteId) != maxSegmentId) {
 								log(segment, "-> segment not reinserted; moving on will resume on next pass.", 0, 1);
 								break;
 							}
 						} else {
-							log(segment, "<b>availability of segment not ok: " + ((int) (nPersistenceRate * 100)) + "% (exact)</b>", 0, 1);
+							log(segment, "<b>availability of segment not ok: " +
+								 ((int) (persistenceRate * 100)) + "% (exact)</b>", 0, 1);
 						}
 					}
 					if (doReinsertions) {
@@ -756,7 +761,7 @@ public class Reinserter extends Thread {
 
 					// TODO
 					// fetchWaiter.waitForCompletion();
-					while (cb.getDecompressedData() == null) {   // workaround because in some cases fetchWaiter.waitForCompletion() never finished
+					while (cb.getDecompressedData() == null) { // workaround because in some cases fetchWaiter.waitForCompletion() never finished
 						if (!isActive()) return;
 
 						synchronized (this) {
@@ -1028,22 +1033,14 @@ public class Reinserter extends Thread {
 
 					// get archive stream (try if archive type unknown)
 					if (archiveType == ARCHIVE_TYPE.TAR || archiveType == null) {
-						try {
 							inStream = new TarInputStream(fetchedDataStream);
 							entryName = ((TarInputStream) inStream).getNextEntry().getName();
 							archiveType = ARCHIVE_TYPE.TAR;
-						} catch (Exception e) {
-							//FIXME: log something here if archivetype != null
-						}
 					}
-					if (archiveType == ARCHIVE_TYPE.ZIP || archiveType == null) {
-						try {
+					if (archiveType == ARCHIVE_TYPE.ZIP) {
 							inStream = new ZipInputStream(fetchedDataStream);
 							entryName = ((ZipInputStream) inStream).getNextEntry().getName();
 							archiveType = ARCHIVE_TYPE.ZIP;
-						} catch (Exception e) {
-							//FIXME: log something here if archivetype != null
-						}
 					}
 
 					// construct metadata
@@ -1067,7 +1064,8 @@ public class Reinserter extends Thread {
 					}
 
 				} catch (Exception e) {
-					//FIXME: log something here if archivetype != null
+					if (archiveType != null)
+						log("unzip and construct metadata: " + Debug.stackTrace(e), 0, 2);
 				}
 			}
 
