@@ -108,7 +108,7 @@ public class Reinserter extends Thread {
 			plugin.stopReinserter();
 			plugin.setIntProp("active", nSiteId);
 			plugin.saveProp();
-			plugin.reinserter = this;
+			plugin.setReinserter(this);
 
 			// activity guard
 			(new ActivityGuard(this)).start();
@@ -771,7 +771,7 @@ public class Reinserter extends Thread {
 				if (!metadata.isSimpleSplitfile()) {
 					FetchContext fetchContext = pr.getHLSimpleClient().getFetchContext();
 					freenet.client.async.ClientContext clientContext = pr.getNode().clientCore.clientContext;
-					FetchWaiter fetchWaiter = new FetchWaiter((RequestClient) plugin.hlsc);
+					FetchWaiter fetchWaiter = new FetchWaiter((RequestClient) plugin.getFreenetClient());
 					List<COMPRESSOR_TYPE> decompressors = new LinkedList<>();
 					if (metadata.isCompressed()) {
 						log("is compressed: " + metadata.getCompressionCodec(), nLevel + 1);
@@ -780,7 +780,7 @@ public class Reinserter extends Thread {
 						log("is not compressed", nLevel + 1);
 					}
 					SplitfileGetCompletionCallback cb = new SplitfileGetCompletionCallback(fetchWaiter);
-					VerySimpleGetter vsg = new VerySimpleGetter((short) 2, null, (RequestClient) plugin.hlsc);
+					VerySimpleGetter vsg = new VerySimpleGetter((short) 2, null, (RequestClient) plugin.getFreenetClient());
 					SplitFileFetcher sf = new SplitFileFetcher(metadata, cb, vsg,
 							fetchContext, true, decompressors,
 							metadata.getClientMetadata(), 0L, metadata.topDontCompress,
@@ -1020,10 +1020,10 @@ public class Reinserter extends Thread {
 			}
 			// fetch raw data
 			//HighLevelSimpleClient hlsc = pr.getHLSimpleClient();
-			FetchContext fetchContext = plugin.hlsc.getFetchContext();
+			FetchContext fetchContext = plugin.getFreenetClient().getFetchContext();
 			fetchContext.returnZIPManifests = true;
 			FetchWaiter fetchWaiter = new FetchWaiter(rc);
-			plugin.hlsc.fetch(uri, -1, fetchWaiter, fetchContext);
+			plugin.getFreenetClient().fetch(uri, -1, fetchWaiter, fetchContext);
 			FetchResult result = fetchWaiter.waitForCompletion();
 
 			return fetchManifest(result.asByteArray(), archiveType, cManifestName);
@@ -1122,11 +1122,11 @@ public class Reinserter extends Thread {
 		try {
 
 			//HighLevelSimpleClient hlsc = pr.getHLSimpleClient();
-			FetchContext fetchContext = plugin.hlsc.getFetchContext();
+			FetchContext fetchContext = plugin.getFreenetClient().getFetchContext();
 			fetchContext.returnZIPManifests = true;
 			FetchWaiter fetchWaiter = new FetchWaiter(rc);
 			try {
-				plugin.hlsc.fetch(uri, -1, fetchWaiter, fetchContext);
+				plugin.getFreenetClient().fetch(uri, -1, fetchWaiter, fetchContext);
 				fetchWaiter.waitForCompletion();
 			} catch (freenet.client.FetchException e) {
 				if (e.getMode() == FetchExceptionMode.PERMANENT_REDIRECT) {
