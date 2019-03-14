@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
-package keepalive.service;
+package keepalive.service.net;
 
 import freenet.client.FetchContext;
 import freenet.client.FetchException;
@@ -24,12 +24,12 @@ import freenet.client.FetchResult;
 import freenet.client.HighLevelSimpleClientImpl;
 import freenet.keys.FreenetURI;
 import freenet.support.io.ArrayBucket;
-import keepalive.Reinserter;
+import keepalive.service.reinserter.Reinserter;
 import keepalive.model.Block;
 
 import java.io.IOException;
 
-public class SingleFetch extends SingleNetJob {
+public class SingleFetch extends SingleJob {
 
 	private boolean persistenceCheck;
 

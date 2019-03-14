@@ -16,17 +16,17 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
-package keepalive.service;
+package keepalive.service.net;
 
 import freenet.client.InsertBlock;
 import freenet.client.InsertContext;
 import freenet.client.InsertException;
 import freenet.keys.FreenetURI;
-import keepalive.Reinserter;
+import keepalive.service.reinserter.Reinserter;
 import keepalive.model.Block;
 import keepalive.model.Segment;
 
-public class SingleInsert extends SingleNetJob {
+public class SingleInsert extends SingleJob {
 
 	public SingleInsert(Reinserter reinserter, Block block) {
 		super(reinserter, "insertion", block);

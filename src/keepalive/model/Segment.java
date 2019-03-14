@@ -18,7 +18,7 @@
  */
 package keepalive.model;
 
-import keepalive.Reinserter;
+import keepalive.service.reinserter.Reinserter;
 
 public class Segment {
 

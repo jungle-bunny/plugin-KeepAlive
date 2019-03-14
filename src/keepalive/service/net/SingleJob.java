@@ -16,15 +16,15 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
-package keepalive.service;
+package keepalive.service.net;
 
 import freenet.keys.FreenetURI;
 import freenet.support.compress.Compressor;
 import keepalive.Plugin;
-import keepalive.Reinserter;
+import keepalive.service.reinserter.Reinserter;
 import keepalive.model.Block;
 
-public abstract class SingleNetJob extends Thread {
+public abstract class SingleJob extends Thread {
 
 	public static final int MAX_LIFETIME = 30;
 
@@ -37,12 +37,12 @@ public abstract class SingleNetJob extends Thread {
 	private String jobType;
 	private boolean active = true;
 
-	SingleNetJob(Reinserter reinserter, String jobType, Block block) {
+	SingleJob(Reinserter reinserter, String jobType, Block block) {
 		this.reinserter = reinserter;
 		this.jobType = jobType;
 		this.block = block;
 		this.plugin = reinserter.plugin;
-		this.setName("KeepAlive SingleNetJob");
+		this.setName("KeepAlive SingleJob");
 
 		// init
 		reinserter.nActiveSingleJobCount++;
@@ -56,7 +56,7 @@ public abstract class SingleNetJob extends Thread {
 			(new ActivityGuard(this, jobType)).start();
 
 		} catch (Exception e) {
-			plugin.log("singleNetJob.run(): " + e.getMessage(), 0);
+			plugin.log("singleJob.run(): " + e.getMessage(), 0);
 		}
 	}
 
@@ -100,7 +100,7 @@ public abstract class SingleNetJob extends Thread {
 			}
 
 		} catch (Exception e) {
-			plugin.log("singleNetJob.finish(): " + e.getMessage(), 0);
+			plugin.log("singleJob.finish(): " + e.getMessage(), 0);
 		}
 	}
 
@@ -116,12 +116,12 @@ public abstract class SingleNetJob extends Thread {
 
 	private class ActivityGuard extends Thread {
 
-		private final SingleNetJob singleNetJob;
+		private final SingleJob singleJob;
 		private final long startTime;
 		private final String type;
 
-		ActivityGuard(SingleNetJob singleNetJob, String type) {
-			this.singleNetJob = singleNetJob;
+		ActivityGuard(SingleJob singleJob, String type) {
+			this.singleJob = singleJob;
 			this.type = type;
 			startTime = System.currentTimeMillis();
 		}
@@ -131,38 +131,38 @@ public abstract class SingleNetJob extends Thread {
 			try {
 
 				// stop
-				while (reinserter.isActive() && singleNetJob.isAlive() && getLifetime() < MAX_LIFETIME) {
+				while (reinserter.isActive() && singleJob.isAlive() && getLifetime() < MAX_LIFETIME) {
 					wait(1000);
 				}
 
 				// has timeout stop 
-				if (reinserter.isActive() && singleNetJob.isAlive()) {
-					singleNetJob.stop();
-					singleNetJob.block.appendResultLog("<b>-> " + jobType + " aborted (timeout)</b>");
+				if (reinserter.isActive() && singleJob.isAlive()) {
+					singleJob.stop();
+					singleJob.block.appendResultLog("<b>-> " + jobType + " aborted (timeout)</b>");
 				}
 
 				// has stopped after reinserter stop
 				if (!reinserter.isActive()) {
-					singleNetJob.stop();
+					singleJob.stop();
 					long nStopCheckBegin = System.currentTimeMillis();
-					while (singleNetJob.isAlive() && nStopCheckBegin > System.currentTimeMillis() - 60 * 1000) {
+					while (singleJob.isAlive() && nStopCheckBegin > System.currentTimeMillis() - 60 * 1000) {
 						try {
 							wait(1000);
 						} catch (InterruptedException ignored) {
 						}
 					}
 
-					if (!singleNetJob.isAlive()) {
-						plugin.log("single " + type + " stopped (" + singleNetJob.reinserter.getSiteId() + ")");
+					if (!singleJob.isAlive()) {
+						plugin.log("single " + type + " stopped (" + singleJob.reinserter.getSiteId() + ")");
 					} else {
 						plugin.log("single " + type +
 							 " not stopped  - stop was indicated 1 minute before (" +
-							 singleNetJob.reinserter.getSiteId() + ")");
+							 singleJob.reinserter.getSiteId() + ")");
 					}
 				}
 
 			} catch (InterruptedException e) {
-				plugin.log("singleNetJob.ActivityGuard.run(): " + e.getMessage(), 0);
+				plugin.log("singleJob.ActivityGuard.run(): " + e.getMessage(), 0);
 			}
 		}
 

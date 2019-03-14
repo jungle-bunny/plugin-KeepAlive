@@ -20,6 +20,7 @@ package keepalive;
 
 import freenet.client.HighLevelSimpleClientImpl;
 import freenet.pluginmanager.PluginRespirator;
+import keepalive.service.reinserter.Reinserter;
 import keepalive.web.AdminPage;
 import pluginbase.PluginBase;
 
@@ -191,7 +192,7 @@ public class Plugin extends PluginBase {
 		return hlsc;
 	}
 
-	void setReinserter(Reinserter reinserter) {
+	public void setReinserter(Reinserter reinserter) {
 		this.reinserter = reinserter;
 	}
 }

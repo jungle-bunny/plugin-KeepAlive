@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
-package keepalive;
+package keepalive.service.reinserter;
 
 import freenet.client.ArchiveManager.ARCHIVE_TYPE;
 import freenet.client.ClientMetadata;
@@ -63,11 +63,12 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.zip.ZipInputStream;
 
+import keepalive.Plugin;
 import keepalive.model.Block;
 import keepalive.model.Segment;
-import keepalive.service.SingleFetch;
-import keepalive.service.SingleInsert;
-import keepalive.service.SingleNetJob;
+import keepalive.service.net.SingleFetch;
+import keepalive.service.net.SingleInsert;
+import keepalive.service.net.SingleJob;
 import org.apache.tools.tar.TarInputStream;
 
 public class Reinserter extends Thread {
@@ -1280,7 +1281,7 @@ public class Reinserter extends Thread {
 		}
 		if (nLastActivityTime != Integer.MIN_VALUE) {
 			long nDelay = (System.currentTimeMillis() - nLastActivityTime) / 60 / 1000;
-			return (nDelay < SingleNetJob.MAX_LIFETIME + 5);
+			return (nDelay < SingleJob.MAX_LIFETIME + 5);
 		}
 		return false;
 	}
