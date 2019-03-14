@@ -67,7 +67,7 @@ import keepalive.model.Block;
 import keepalive.model.Segment;
 import keepalive.service.SingleFetch;
 import keepalive.service.SingleInsert;
-import keepalive.service.SingleJob;
+import keepalive.service.SingleNetJob;
 import org.apache.tools.tar.TarInputStream;
 
 public class Reinserter extends Thread {
@@ -1280,7 +1280,7 @@ public class Reinserter extends Thread {
 		}
 		if (nLastActivityTime != Integer.MIN_VALUE) {
 			long nDelay = (System.currentTimeMillis() - nLastActivityTime) / 60 / 1000;
-			return (nDelay < SingleJob.MAX_LIFETIME + 5);
+			return (nDelay < SingleNetJob.MAX_LIFETIME + 5);
 		}
 		return false;
 	}
