@@ -32,7 +32,7 @@ public class AdminPage extends PageBase {
 	private Plugin plugin;
 
 	public AdminPage(Plugin plugin) {
-		super("Keep Alive", "Keep Alive", plugin, true);
+		super("", "Keep Alive", plugin, true);
 		this.plugin = plugin;
 		addPageToMenu("Start reinsertion of sites", "Add or remove sites you like to reinsert");
 	}
