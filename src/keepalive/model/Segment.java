@@ -24,8 +24,8 @@ public class Segment {
 
 	private int id;
 	private final int size;
-	private int dataBlocksCount;
 	private Block[] blocks;
+	private int dataBlocksCount;
 	private int success = 0;
 	private int failed = 0;
 	private boolean persistenceCheckOk = false;
