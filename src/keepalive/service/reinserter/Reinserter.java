@@ -278,7 +278,6 @@ public class Reinserter extends Thread {
 
 					FetchBlocksResult result = waitForAllBlocksFetched(requestedBlocks);
 
-					// todo: duplicate code
 					// calculate persistence rate
 					double persistenceRate = (double) result.successful / (result.successful + result.failed);
 					if (persistenceRate >= (double) plugin.getIntProp("splitfile_tolerance") / 100) {
@@ -319,7 +318,6 @@ public class Reinserter extends Thread {
 
 						result = waitForAllBlocksFetched(requestedBlocks);
 
-						// todo: duplicate code
 						// calculate persistence rate
 						persistenceRate = (double) result.successful / (result.successful + result.failed);
 						if (persistenceRate >= (double) plugin.getIntProp("splitfile_tolerance") / 100.0) {
@@ -455,18 +453,16 @@ public class Reinserter extends Thread {
 				}
 			}
 
-			// TODO: doReinsertions is not updated inside loop
 			// wait for finishing all segments
 			while (doReinsertions) {
-				if (plugin.getIntProp("segment_" + siteId) == maxSegmentId) {
-					break;
-				}
+				if (plugin.getIntProp("segment_" + siteId) == maxSegmentId) break;
+
 				synchronized (this) {
 					this.wait(1000);
 				}
-				if (!isActive()) {
-					return;
-				}
+
+				if (!isActive()) return;
+
 				checkFinishedSegments();
 			}
 
@@ -759,7 +755,6 @@ public class Reinserter extends Thread {
 						 true, clientContext);
 					sf.schedule(clientContext);
 
-					// TODO
 					// fetchWaiter.waitForCompletion();
 					while (cb.getDecompressedData() == null) { // workaround because in some cases fetchWaiter.waitForCompletion() never finished
 						if (!isActive()) return;
