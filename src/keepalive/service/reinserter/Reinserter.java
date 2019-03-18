@@ -334,8 +334,8 @@ public class Reinserter extends Thread {
 								 ((int) (persistenceRate * 100)) + "% (exact)</b>", 0, 1);
 						}
 					}
-					if (doReinsertions) {
 
+					if (doReinsertions) {
 						// heal segment
 						// init
 						log(segment, "starting segment healing", 0, 1);
@@ -452,16 +452,16 @@ public class Reinserter extends Thread {
 			}
 
 			// wait for finishing all segments
-			while (doReinsertions) {
-				if (plugin.getIntProp("segment_" + siteId) == maxSegmentId) break;
+			if (doReinsertions) {
+				while (plugin.getIntProp("segment_" + siteId) != maxSegmentId) {
+					synchronized (this) {
+						this.wait(1000);
+					}
 
-				synchronized (this) {
-					this.wait(1000);
+					if (!isActive()) return;
+
+					checkFinishedSegments();
 				}
-
-				if (!isActive()) return;
-
-				checkFinishedSegments();
 			}
 
 			// add to history if we've processed the last segment in the file.
@@ -971,6 +971,7 @@ public class Reinserter extends Thread {
 
 			// init
 			uri = normalizeUri(uri);
+			assert uri != null;
 			if (uri.isCHK())
 				uri.getExtra()[2] = 0;  // deactivate control flag
 
