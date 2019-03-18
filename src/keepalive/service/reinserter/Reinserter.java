@@ -221,9 +221,7 @@ public class Reinserter extends Thread {
 			int power = plugin.getIntProp("power");
 			boolean doReinsertions = true;
 			while (true) {
-				if (!isActive()) {
-					return;
-				}
+				if (!isActive()) return;
 
 				// next segment
 				int nSegmentSize = 0;
@@ -306,12 +304,12 @@ public class Reinserter extends Thread {
 								requestedBlocks.add(segment.getBlock(i));
 							}
 						}
-						for (Block vRequestedBlock : requestedBlocks) {
+						for (Block requestedBlock : requestedBlocks) {
 							waitForNextFreeThread(power);
 
 							// fetch next block that has not been fetched yet
-							if (vRequestedBlock.isFetchInProcess()) {
-								SingleFetch fetch = new SingleFetch(this, vRequestedBlock, true);
+							if (requestedBlock.isFetchInProcess()) {
+								SingleFetch fetch = new SingleFetch(this, requestedBlock, true);
 								fetch.start();
 							}
 						}
@@ -336,9 +334,10 @@ public class Reinserter extends Thread {
 								 ((int) (persistenceRate * 100)) + "% (exact)</b>", 0, 1);
 						}
 					}
-					if (doReinsertions) {
 
+					if (doReinsertions) { // persistenceRate < splitfile tolerance
 						// heal segment
+
 						// init
 						log(segment, "starting segment healing", 0, 1);
 						byte[][] dataBlocks = new byte[segment.dataSize()][];
@@ -364,8 +363,8 @@ public class Reinserter extends Thread {
 							}
 						}
 
+						// decode
 						FECCodec codec = FECCodec.getInstance(SplitfileAlgorithm.ONION_STANDARD);
-
 						log(segment, "start decoding", 0, 1);
 						try {
 							codec.decode(dataBlocks, checkBlocks, dataBlocksPresent, checkBlocksPresent, CHKBlock.DATA_LENGTH);
@@ -454,16 +453,16 @@ public class Reinserter extends Thread {
 			}
 
 			// wait for finishing all segments
-			while (doReinsertions) {
-				if (plugin.getIntProp("segment_" + siteId) == maxSegmentId) break;
+			if (doReinsertions) {
+				while (plugin.getIntProp("segment_" + siteId) != maxSegmentId) {
+					synchronized (this) {
+						this.wait(1000);
+					}
 
-				synchronized (this) {
-					this.wait(1000);
+					if (!isActive()) return;
+
+					checkFinishedSegments();
 				}
-
-				if (!isActive()) return;
-
-				checkFinishedSegments();
 			}
 
 			// add to history if we've processed the last segment in the file.
@@ -567,10 +566,10 @@ public class Reinserter extends Thread {
 	private void checkFinishedSegments() {
 		try {
 
-			int nSegment;
-			while ((nSegment = plugin.getIntProp("segment_" + siteId)) < segments.size() - 1) {
-				if (segments.get(nSegment + 1).isFinished()) {
-					plugin.setIntProp("segment_" + siteId, nSegment + 1);
+			int segment;
+			while ((segment = plugin.getIntProp("segment_" + siteId)) < segments.size() - 1) {
+				if (segments.get(segment + 1).isFinished()) {
+					plugin.setIntProp("segment_" + siteId, segment + 1);
 				} else {
 					break;
 				}
@@ -597,11 +596,11 @@ public class Reinserter extends Thread {
 					if (file.getFilePointer() > 0) {
 						file.writeBytes("\n");
 					}
-					String cType = "d";
+					String type = "d";
 					if (!block.isDataBlock()) {
-						cType = "c";
+						type = "c";
 					}
-					file.writeBytes(block.getUri().toString() + "#" + block.getSegmentId() + "#" + block.getId() + "#" + cType);
+					file.writeBytes(block.getUri().toString() + "#" + block.getSegmentId() + "#" + block.getId() + "#" + type);
 				}
 			}
 
@@ -611,50 +610,47 @@ public class Reinserter extends Thread {
 	}
 
 	private synchronized void loadBlockUris() {
-		try {
-
-			try (RandomAccessFile file = new RandomAccessFile(
+		try (RandomAccessFile file = new RandomAccessFile(
 				 plugin.getPluginDirectory() + plugin.getBlockListFilename(siteId), "r")) {
-				String cValues;
-				while ((cValues = file.readLine()) != null) {
-					String[] aValues = cValues.split("#");
+
+				String values;
+				while ((values = file.readLine()) != null) {
+					String[] aValues = values.split("#");
 					FreenetURI uri = new FreenetURI(aValues[0]);
-					int nSegmentId = Integer.parseInt(aValues[1]);
-					int nId = Integer.parseInt(aValues[2]);
-					boolean bIsDataBlock = aValues[3].equals("d");
-					blocks.put(uri, new Block(uri, nSegmentId, nId, bIsDataBlock));
+					int segmentId = Integer.parseInt(aValues[1]);
+					int blockId = Integer.parseInt(aValues[2]);
+					boolean isDataBlock = aValues[3].equals("d");
+					blocks.put(uri, new Block(uri, segmentId, blockId, isDataBlock));
 				}
-			}
 
 		} catch (IOException | NumberFormatException e) {
 			plugin.log("Reinserter.loadBlockUris(): " + e.getMessage(), 0);
 		}
 	}
 
-	private void parseMetadata(FreenetURI uri, Metadata metadata, int nLevel) {
+	private void parseMetadata(FreenetURI uri, Metadata metadata, int level) {
 		try {
 
 			// activity flag
 			if (!isActive()) return;
 
 			// register uri
-			registerBlockUri(uri, true, true, nLevel);
+			registerBlockUri(uri, true, true, level);
 
 			// constructs top level simple manifest (= first action on a new uri)
 			if (metadata == null) {
 
 				metadata = fetchManifest(uri, null, null);
 				if (metadata == null) {
-					log("no metadata", nLevel);
+					log("no metadata", level);
 					return;
 				}
-
 			}
 
 			// internal manifest (simple manifest)
 			if (metadata.isSimpleManifest()) {
 
-				log("manifest (" + getMetadataType(metadata) + "): " + metadata.getResolvedName(), nLevel);
+				log("manifest (" + getMetadataType(metadata) + "): " + metadata.getResolvedName(), level);
 				HashMap<String, Metadata> targetList = null;
 				try {
 					targetList = metadata.getDocuments();
@@ -671,42 +667,38 @@ public class Reinserter extends Thread {
 						// remember document name
 						target.resolve(entry.getKey());
 						// parse document
-						parseMetadata(uri, target, nLevel + 1);
+						parseMetadata(uri, target, level + 1);
 					}
 				}
 
 				return;
-
 			}
 
 			// redirect to submanifest
 			if (metadata.isArchiveMetadataRedirect()) {
 
-				log("document (" + getMetadataType(metadata) + "): " + metadata.getResolvedName(), nLevel);
+				log("document (" + getMetadataType(metadata) + "): " + metadata.getResolvedName(), level);
 				Metadata subManifest = fetchManifest(uri, metadata.getArchiveType(), metadata.getArchiveInternalName());
-				parseMetadata(uri, subManifest, nLevel);
+				parseMetadata(uri, subManifest, level);
 				return;
-
 			}
 
 			// internal redirect
 			if (metadata.isArchiveInternalRedirect()) {
 
-				log("document (" + getMetadataType(metadata) + "): " + metadata.getArchiveInternalName(), nLevel);
+				log("document (" + getMetadataType(metadata) + "): " + metadata.getArchiveInternalName(), level);
 				return;
-
 			}
 
 			// single file redirect with external key (only possible if archive manifest or simple redirect but not splitfile)
 			if (metadata.isSingleFileRedirect()) {
 
-				log("document (" + getMetadataType(metadata) + "): " + metadata.getResolvedName(), nLevel);
+				log("document (" + getMetadataType(metadata) + "): " + metadata.getResolvedName(), level);
 				FreenetURI targetUri = metadata.getSingleTarget();
-				log("-> redirect to: " + targetUri, nLevel);
-				registerManifestUri(targetUri, nLevel);
-				registerBlockUri(targetUri, true, true, nLevel);
+				log("-> redirect to: " + targetUri, level);
+				registerManifestUri(targetUri, level);
+				registerBlockUri(targetUri, true, true, level);
 				return;
-
 			}
 
 			// splitfile
@@ -714,23 +706,23 @@ public class Reinserter extends Thread {
 
 				// splitfile type
 				if (metadata.isSimpleSplitfile()) {
-					log("simple splitfile: " + metadata.getResolvedName(), nLevel);
+					log("simple splitfile: " + metadata.getResolvedName(), level);
 				} else {
-					log("splitfile (not simple): " + metadata.getResolvedName(), nLevel);
+					log("splitfile (not simple): " + metadata.getResolvedName(), level);
 				}
 
 				// register blocks
 				Metadata metadata2 = (Metadata) metadata.clone();
 				SplitFileSegmentKeys[] segmentKeys = metadata2.grabSegmentKeys();
 				for (int i = 0; i < segmentKeys.length; i++) {
-					int nDataBlocks = segmentKeys[i].getDataBlocks();
-					int nCheckBlocks = segmentKeys[i].getCheckBlocks();
-					log("segment_" + i + ": " + (nDataBlocks + nCheckBlocks) +
-						 " (data=" + nDataBlocks + ", check=" + nCheckBlocks + ")", nLevel + 1);
-					for (int j = 0; j < nDataBlocks + nCheckBlocks; j++) {
+					int dataBlocks = segmentKeys[i].getDataBlocks();
+					int checkBlocks = segmentKeys[i].getCheckBlocks();
+					log("segment_" + i + ": " + (dataBlocks + checkBlocks) +
+						 " (data=" + dataBlocks + ", check=" + checkBlocks + ")", level + 1);
+					for (int j = 0; j < dataBlocks + checkBlocks; j++) {
 						FreenetURI splitUri = segmentKeys[i].getKey(j, null, false).getURI();
-						log("block: " + splitUri, nLevel + 1);
-						registerBlockUri(splitUri, (j == 0), (j < nDataBlocks), nLevel + 1);
+						log("block: " + splitUri, level + 1);
+						registerBlockUri(splitUri, (j == 0), (j < dataBlocks), level + 1);
 					}
 				}
 
@@ -741,10 +733,10 @@ public class Reinserter extends Thread {
 					FetchWaiter fetchWaiter = new FetchWaiter(plugin.getFreenetClient());
 					List<COMPRESSOR_TYPE> decompressors = new LinkedList<>();
 					if (metadata.isCompressed()) {
-						log("is compressed: " + metadata.getCompressionCodec(), nLevel + 1);
+						log("is compressed: " + metadata.getCompressionCodec(), level + 1);
 						decompressors.add(metadata.getCompressionCodec());
 					} else {
-						log("is not compressed", nLevel + 1);
+						log("is not compressed", level + 1);
 					}
 					SplitfileGetCompletionCallback cb = new SplitfileGetCompletionCallback(fetchWaiter);
 					VerySimpleGetter vsg = new VerySimpleGetter((short) 2, null, plugin.getFreenetClient());
@@ -765,9 +757,8 @@ public class Reinserter extends Thread {
 					}
 					sf.cancel(clientContext);
 					metadata = fetchManifest(cb.getDecompressedData(), null, null);
-					parseMetadata(null, metadata, nLevel + 1);
+					parseMetadata(null, metadata, level + 1);
 				}
-
 			}
 
 		} catch (Exception e) {
@@ -778,32 +769,32 @@ public class Reinserter extends Thread {
 	private String getMetadataType(Metadata metadata) {
 		try {
 
-			String cTypes = "";
+			String types = "";
 
-			if (metadata.isArchiveManifest()) cTypes += ",AM";
+			if (metadata.isArchiveManifest()) types += ",AM";
 
-			if (metadata.isSimpleManifest()) cTypes += ",SM";
+			if (metadata.isSimpleManifest()) types += ",SM";
 
-			if (metadata.isArchiveInternalRedirect()) cTypes += ",AIR";
+			if (metadata.isArchiveInternalRedirect()) types += ",AIR";
 
-			if (metadata.isArchiveMetadataRedirect()) cTypes += ",AMR";
+			if (metadata.isArchiveMetadataRedirect()) types += ",AMR";
 
-			if (metadata.isSymbolicShortlink()) cTypes += ",SSL";
+			if (metadata.isSymbolicShortlink()) types += ",SSL";
 
-			if (metadata.isSingleFileRedirect()) cTypes += ",SFR";
+			if (metadata.isSingleFileRedirect()) types += ",SFR";
 
-			if (metadata.isSimpleRedirect()) cTypes += ",SR";
+			if (metadata.isSimpleRedirect()) types += ",SR";
 
-			if (metadata.isMultiLevelMetadata()) cTypes += ",MLM";
+			if (metadata.isMultiLevelMetadata()) types += ",MLM";
 
-			if (metadata.isSplitfile()) cTypes += ",SF";
+			if (metadata.isSplitfile()) types += ",SF";
 
-			if (metadata.isSimpleSplitfile()) cTypes += ",SSF";
+			if (metadata.isSimpleSplitfile()) types += ",SSF";
 
 			// remove first comma
-			if (cTypes.length() > 0) cTypes = cTypes.substring(1);
+			if (types.length() > 0) types = types.substring(1);
 
-			return cTypes;
+			return types;
 
 		} catch (Exception e) {
 			plugin.log("Reinserter.getMetadataType(): " + e.getMessage());
@@ -832,7 +823,7 @@ public class Reinserter extends Thread {
 	private class SplitfileGetCompletionCallback implements GetCompletionCallback {
 
 		private final FetchWaiter fetchWaiter;
-		private byte[] aDecompressedSplitFileData = null;
+		private byte[] decompressedSplitFileData = null;
 
 		SplitfileGetCompletionCallback(FetchWaiter fetchWaiter) {
 			this.fetchWaiter = fetchWaiter;
@@ -863,10 +854,10 @@ public class Reinserter extends Thread {
 						decompressors.get(0).decompress(compressedInStream, decompressedOutStream, Integer.MAX_VALUE, -1);
 					}
 					decompressedOutStream.close();
-					aDecompressedSplitFileData = decompressedOutStream.toByteArray();
+					decompressedSplitFileData = decompressedOutStream.toByteArray();
 					fetchWaiter.onSuccess(null, null);
 				} else {
-					aDecompressedSplitFileData = aCompressedSplitFileData;
+					decompressedSplitFileData = aCompressedSplitFileData;
 				}
 
 			} catch (IOException e) {
@@ -875,7 +866,7 @@ public class Reinserter extends Thread {
 		}
 
 		byte[] getDecompressedData() {
-			return aDecompressedSplitFileData;
+			return decompressedSplitFileData;
 		}
 
 		@Override
@@ -915,34 +906,14 @@ public class Reinserter extends Thread {
 
 		private final FreenetURI uri;
 
+		VerySimpleGetter(short priorityClass, FreenetURI uri, RequestClient rc) {
+			super(priorityClass, new FakeCallback(rc));
+			this.uri = uri;
+		}
+
 		@Override
 		public ClientRequestSchedulerGroup getSchedulerGroup() {
 			return null;
-		}
-
-		private static class FakeCallback implements ClientBaseCallback {
-
-			FakeCallback(RequestClient client) {
-				this.client = client;
-			}
-
-			final RequestClient client;
-
-			@Override
-			public void onResume(ClientContext context) {
-				throw new UnsupportedOperationException();
-			}
-
-			@Override
-			public RequestClient getRequestClient() {
-				return client;
-			}
-
-		}
-
-		VerySimpleGetter(short priorityclass, FreenetURI uri, RequestClient rc) {
-			super(priorityclass, new FakeCallback(rc));
-			this.uri = uri;
 		}
 
 		@Override
@@ -976,13 +947,32 @@ public class Reinserter extends Thread {
 			return null;
 		}
 
+		private static class FakeCallback implements ClientBaseCallback {
+
+			FakeCallback(RequestClient client) {
+				this.client = client;
+			}
+
+			final RequestClient client;
+
+			@Override
+			public void onResume(ClientContext context) {
+				throw new UnsupportedOperationException();
+			}
+
+			@Override
+			public RequestClient getRequestClient() {
+				return client;
+			}
+		}
 	}
 
-	private Metadata fetchManifest(FreenetURI uri, ARCHIVE_TYPE archiveType, String cManifestName) {
+	private Metadata fetchManifest(FreenetURI uri, ARCHIVE_TYPE archiveType, String manifestName) {
 		try {
 
 			// init
 			uri = normalizeUri(uri);
+			assert uri != null;
 			if (uri.isCHK())
 				uri.getExtra()[2] = 0;  // deactivate control flag
 
@@ -993,7 +983,7 @@ public class Reinserter extends Thread {
 			plugin.getFreenetClient().fetch(uri, -1, fetchWaiter, fetchContext);
 			FetchResult result = fetchWaiter.waitForCompletion();
 
-			return fetchManifest(result.asByteArray(), archiveType, cManifestName);
+			return fetchManifest(result.asByteArray(), archiveType, manifestName);
 
 		} catch (FetchException | IOException e) {
 			plugin.log("Reinserter.fetchManifest(uri): " + e.getMessage());
@@ -1001,23 +991,21 @@ public class Reinserter extends Thread {
 		}
 	}
 
-	private Metadata fetchManifest(byte[] aData, ARCHIVE_TYPE archiveType, String cManifestName) {
-		Metadata metadata;
-		try (
-			 ByteArrayInputStream fetchedDataStream = new ByteArrayInputStream(aData)) {
+	private Metadata fetchManifest(byte[] data, ARCHIVE_TYPE archiveType, String manifestName) {
+		Metadata metadata = null;
+		try (ByteArrayInputStream fetchedDataStream = new ByteArrayInputStream(data)) {
 
-			metadata = null;
-			if (cManifestName == null) {
-				cManifestName = ".metadata";
-			}
+			if (manifestName == null)
+				manifestName = ".metadata";
 
 			if (archiveType == null) {
 				//try to construct metadata directly
 				try {
-					metadata = Metadata.construct(aData);
+					metadata = Metadata.construct(data);
 				} catch (MetadataParseException ignored) {
 				}
 			}
+
 			if (metadata == null) {
 				// unzip and construct metadata
 
@@ -1040,7 +1028,7 @@ public class Reinserter extends Thread {
 
 					// construct metadata
 					while (inStream != null && entryName != null) {
-						if (entryName.equals(cManifestName)) {
+						if (entryName.equals(manifestName)) {
 							byte[] buf = new byte[32768];
 							ByteArrayOutputStream outStream = new ByteArrayOutputStream();
 							int bytes;
@@ -1066,9 +1054,9 @@ public class Reinserter extends Thread {
 
 			if (metadata != null) {
 				if (archiveType != null) {
-					cManifestName += " (" + archiveType.name() + ")";
+					manifestName += " (" + archiveType.name() + ")";
 				}
-				metadata.resolve(cManifestName);
+				metadata.resolve(manifestName);
 			}
 			return metadata;
 
@@ -1112,16 +1100,16 @@ public class Reinserter extends Thread {
 		}
 	}
 
-	private void registerManifestUri(FreenetURI uri, int nLevel) {
+	private void registerManifestUri(FreenetURI uri, int level) {
 		try {
 
 			uri = normalizeUri(uri);
 			if (manifestURIs.containsKey(uri)) {
-				log("-> already registered manifest", nLevel, 2);
+				log("-> already registered manifest", level, 2);
 			} else {
 				manifestURIs.put(uri, null);
-				if (nLevel != -1) {
-					log("-> registered manifest", nLevel, 2);
+				if (level != -1) {
+					log("-> registered manifest", level, 2);
 				}
 			}
 
@@ -1211,7 +1199,7 @@ public class Reinserter extends Thread {
 			plugin.saveProp();
 
 		} catch (Exception e) {
-			plugin.log("Reinserter.updateBlockStatistic(): " + e.getMessage(), 0);
+			plugin.log("Reinserter.saveSuccessToProp(): " + e.getMessage(), 0);
 		}
 	}
 
@@ -1247,49 +1235,51 @@ public class Reinserter extends Thread {
 		return false;
 	}
 
-	public void log(int nSegmentId, String cMessage, int tabLevel, int nLogLevel) {
+	public void log(int segmentId, String message, int level, int logLevel) {
 		StringBuilder buf = new StringBuilder();
 
-		for (int i = 0; i < tabLevel; i++) {
+		for (int i = 0; i < level; i++) {
 			buf.append("    ");
 		}
-		if (nSegmentId != -1) {
-			buf.insert(0, "(" + nSegmentId + ") ");
+
+		if (segmentId != -1) {
+			buf.insert(0, "(" + segmentId + ") ");
 		}
+
 		try {
 			if (plugin.getIntProp("log_links") == 1) {
-				int keyPos = cMessage.indexOf("K@");
+				int keyPos = message.indexOf("K@");
 				if (keyPos != -1) {
 					keyPos = keyPos - 2;
-					int keyPos2 = Math.max(cMessage.indexOf(" ", keyPos), cMessage.indexOf("<", keyPos));
+					int keyPos2 = Math.max(message.indexOf(" ", keyPos), message.indexOf("<", keyPos));
 					if (keyPos2 == -1) {
-						keyPos2 = cMessage.length();
+						keyPos2 = message.length();
 					}
-					String cKey = cMessage.substring(keyPos, keyPos2);
-					cMessage = cMessage.substring(0, keyPos) +
-						 "<a href=\"/" + cKey + "\">" + cKey + "</a>" + cMessage.substring(keyPos2);
+					String key = message.substring(keyPos, keyPos2);
+					message = message.substring(0, keyPos) +
+						 "<a href=\"/" + key + "\">" + key + "</a>" + message.substring(keyPos2);
 				}
 			}
 		} catch (Exception ignored) {
 		}
-		String cPrefix = buf.toString();
-		plugin.log(plugin.getLogFilename(siteId), cPrefix + cMessage, nLogLevel);
+
+		plugin.log(plugin.getLogFilename(siteId), buf.append(message).toString(), logLevel);
 	}
 
-	public void log(Segment segment, String cMessage, int nLevel, int nLogLevel) {
-		log(segment.getId(), cMessage, nLevel, nLogLevel);
+	public void log(Segment segment, String message, int level, int logLevel) {
+		log(segment.getId(), message, level, logLevel);
 	}
 
-	public void log(Segment segment, String cMessage, int nLevel) {
-		log(segment, cMessage, nLevel, 1);
+	public void log(Segment segment, String message, int level) {
+		log(segment, message, level, 1);
 	}
 
-	public void log(String cMessage, int nLevel, int nLogLevel) {
-		log(-1, cMessage, nLevel, nLogLevel);
+	public void log(String message, int level, int logLevel) {
+		log(-1, message, level, logLevel);
 	}
 
-	public void log(String cMessage, int nLevel) {
-		log(-1, cMessage, nLevel, 1);
+	public void log(String message, int level) {
+		log(-1, message, level, 1);
 	}
 
 	public void log(Segment segment, String cMessage, Object obj) {
@@ -1298,6 +1288,14 @@ public class Reinserter extends Thread {
 		} else {
 			log(segment, cMessage + " = null", 1, 2);
 		}
+	}
+
+	public int getSiteId() {
+		return siteId;
+	}
+
+	public ArrayList<Segment> getSegments() {
+		return segments;
 	}
 
 	private class ActivityGuard extends Thread {
@@ -1317,30 +1315,23 @@ public class Reinserter extends Thread {
 					wait(1000);
 				}
 				reinserter.terminate();
-				long nStopCheckBegin = System.currentTimeMillis();
-				while (reinserter.isAlive() && nStopCheckBegin > (System.currentTimeMillis() - (10 * 60 * 1000))) {
+
+				long stopCheckBegin = System.currentTimeMillis();
+				while (reinserter.isAlive() && stopCheckBegin > (System.currentTimeMillis() - (10 * 60 * 1000))) {
 					try {
 						wait(100);
 					} catch (InterruptedException ignored) {
 					}
 				}
+
 				if (!reinserter.isAlive()) {
 					plugin.log("reinserter stopped (" + siteId + ")");
 				} else {
 					plugin.log("reinserter not stopped - stop was indicated 10 minutes before (" + siteId + ")");
 				}
-
 			} catch (InterruptedException e) {
 				plugin.log("Reinserter.ActivityGuard.run(): " + e.getMessage(), 0);
 			}
 		}
-	}
-
-	public int getSiteId() {
-		return siteId;
-	}
-
-	public ArrayList<Segment> getSegments() {
-		return segments;
 	}
 }
