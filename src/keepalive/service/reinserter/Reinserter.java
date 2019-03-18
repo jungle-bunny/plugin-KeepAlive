@@ -304,12 +304,12 @@ public class Reinserter extends Thread {
 								requestedBlocks.add(segment.getBlock(i));
 							}
 						}
-						for (Block vRequestedBlock : requestedBlocks) {
+						for (Block requestedBlock : requestedBlocks) {
 							waitForNextFreeThread(power);
 
 							// fetch next block that has not been fetched yet
-							if (vRequestedBlock.isFetchInProcess()) {
-								SingleFetch fetch = new SingleFetch(this, vRequestedBlock, true);
+							if (requestedBlock.isFetchInProcess()) {
+								SingleFetch fetch = new SingleFetch(this, requestedBlock, true);
 								fetch.start();
 							}
 						}
@@ -335,8 +335,9 @@ public class Reinserter extends Thread {
 						}
 					}
 
-					if (doReinsertions) {
+					if (doReinsertions) { // persistenceRate < splitfile tolerance
 						// heal segment
+
 						// init
 						log(segment, "starting segment healing", 0, 1);
 						byte[][] dataBlocks = new byte[segment.dataSize()][];
@@ -362,8 +363,8 @@ public class Reinserter extends Thread {
 							}
 						}
 
+						// decode
 						FECCodec codec = FECCodec.getInstance(SplitfileAlgorithm.ONION_STANDARD);
-
 						log(segment, "start decoding", 0, 1);
 						try {
 							codec.decode(dataBlocks, checkBlocks, dataBlocksPresent, checkBlocksPresent, CHKBlock.DATA_LENGTH);
