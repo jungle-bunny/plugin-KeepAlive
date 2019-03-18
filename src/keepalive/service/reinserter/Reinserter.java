@@ -304,12 +304,12 @@ public class Reinserter extends Thread {
 								requestedBlocks.add(segment.getBlock(i));
 							}
 						}
-						for (Block vRequestedBlock : requestedBlocks) {
+						for (Block requestedBlock : requestedBlocks) {
 							waitForNextFreeThread(power);
 
 							// fetch next block that has not been fetched yet
-							if (vRequestedBlock.isFetchInProcess()) {
-								SingleFetch fetch = new SingleFetch(this, vRequestedBlock, true);
+							if (requestedBlock.isFetchInProcess()) {
+								SingleFetch fetch = new SingleFetch(this, requestedBlock, true);
 								fetch.start();
 							}
 						}
@@ -334,9 +334,10 @@ public class Reinserter extends Thread {
 								 ((int) (persistenceRate * 100)) + "% (exact)</b>", 0, 1);
 						}
 					}
-					if (doReinsertions) {
 
+					if (doReinsertions) { // persistenceRate < splitfile tolerance
 						// heal segment
+
 						// init
 						log(segment, "starting segment healing", 0, 1);
 						byte[][] dataBlocks = new byte[segment.dataSize()][];
@@ -362,8 +363,8 @@ public class Reinserter extends Thread {
 							}
 						}
 
+						// decode
 						FECCodec codec = FECCodec.getInstance(SplitfileAlgorithm.ONION_STANDARD);
-
 						log(segment, "start decoding", 0, 1);
 						try {
 							codec.decode(dataBlocks, checkBlocks, dataBlocksPresent, checkBlocksPresent, CHKBlock.DATA_LENGTH);
@@ -452,16 +453,16 @@ public class Reinserter extends Thread {
 			}
 
 			// wait for finishing all segments
-			while (doReinsertions) {
-				if (plugin.getIntProp("segment_" + siteId) == maxSegmentId) break;
+			if (doReinsertions) {
+				while (plugin.getIntProp("segment_" + siteId) != maxSegmentId) {
+					synchronized (this) {
+						this.wait(1000);
+					}
 
-				synchronized (this) {
-					this.wait(1000);
+					if (!isActive()) return;
+
+					checkFinishedSegments();
 				}
-
-				if (!isActive()) return;
-
-				checkFinishedSegments();
 			}
 
 			// add to history if we've processed the last segment in the file.
@@ -971,6 +972,7 @@ public class Reinserter extends Thread {
 
 			// init
 			uri = normalizeUri(uri);
+			assert uri != null;
 			if (uri.isCHK())
 				uri.getExtra()[2] = 0;  // deactivate control flag
 
