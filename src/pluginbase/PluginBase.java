@@ -42,36 +42,36 @@ import java.util.Properties;
 import java.util.TimeZone;
 import java.util.TreeMap;
 
-abstract public class PluginBase implements FredPlugin, FredPluginThreadless, FredPluginVersioned, FredPluginL10n, ConnectionListener {
+abstract public class PluginBase implements FredPlugin, FredPluginThreadless,
+		FredPluginVersioned, FredPluginL10n, ConnectionListener {
 
-	public PageMaker pagemaker;
 	public PluginContext pluginContext;
-	public WebInterface webInterface;
-	public Connection fcpConnection;
-	private Properties prop;
-	LANGUAGE nodeLanguage;
-	TreeMap<String, RandomAccessFile> mLogFiles;
-	boolean bFcpConnection;
-	TreeMap mPages = new TreeMap();
-	String cTitle;
-	String cPath;
-	String cPropFilename;
-	String cMenuTitle = null;
-	String cMenuTooltip = null;
-	String cVersion = "0.0";
-	SimpleDateFormat dateFormat;
 
-	public PluginBase(String cPath, String cTitle, String cPropFilename, boolean bFcpConnection) {
+	PageMaker pagemaker;
+	WebInterface webInterface;
+	Connection fcpConnection;
+	LANGUAGE nodeLanguage;
+
+	private Properties prop;
+	private String strTitle;
+	private String strPath;
+	private String strPropFilename;
+	private String strMenuTitle = null;
+	private String strMenuTooltip = null;
+	private String strVersion = "0.0";
+	private SimpleDateFormat dateFormat;
+	private TreeMap mPages = new TreeMap();
+	private TreeMap<String, RandomAccessFile> mLogFiles = new TreeMap<>();
+
+	public PluginBase(String strPath, String strTitle, String strPropFilename) {
 		try {
 
-			this.cPath = cPath;
-			this.cTitle = cTitle;
-			this.cPropFilename = cPropFilename;
-			this.bFcpConnection = bFcpConnection;
+			this.strPath = strPath;
+			this.strTitle = strTitle;
+			this.strPropFilename = strPropFilename;
 
 			// prepare and clear log file
-			(new File(cPath)).mkdir();
-			mLogFiles = new TreeMap<>();
+			(new File(strPath)).mkdir();
 			initLog("log.txt");
 			dateFormat = new SimpleDateFormat("yyyy.MM.dd_HH.mm_ss");
 			dateFormat.setTimeZone(TimeZone.getDefault());
@@ -87,20 +87,16 @@ abstract public class PluginBase implements FredPlugin, FredPluginThreadless, Fr
 		}
 	}
 
-	public PluginBase(String cPath, String cTitle, String cPropFilename) {
-		this(cPath, cTitle, cPropFilename, true);
-	}
-
 	String getCategory() {
-		return cTitle.replaceAll(" ", "_");
+		return strTitle.replaceAll(" ", "_");
 	}
 
 	String getPath() {
-		return "/" + cPath;
+		return "/" + strPath;
 	}
 
 	public String getPluginDirectory() {
-		return cPath + "/";
+		return strPath + "/";
 	}
 
 	@Override
@@ -119,8 +115,8 @@ abstract public class PluginBase implements FredPlugin, FredPluginThreadless, Fr
 
 			// add menu
 			pagemaker.removeNavigationCategory(getCategory());
-			if (cMenuTitle != null) {
-				webInterface.addNavigationCategory(getPath() + "/", getCategory(), cMenuTooltip, this);
+			if (strMenuTitle != null) {
+				webInterface.addNavigationCategory(getPath() + "/", getCategory(), strMenuTooltip, this);
 			}
 
 		} catch (Exception e) {
@@ -130,17 +126,17 @@ abstract public class PluginBase implements FredPlugin, FredPluginThreadless, Fr
 
 	@Override
 	public String getVersion() {                         // FredPluginVersioned
-		return cTitle + " " + cVersion;
+		return strTitle + " " + strVersion;
 	}
 
 	/**
 	 *
-	 * @param cKey
-	 * @return
+	 * @param strKey
+	 * @return This method return phrase in right local
 	 */
 	@Override
-	public String getString(String cKey) {               // FredPluginL10n
-		return cKey;
+	public String getString(String strKey) {               // FredPluginL10n
+		return strKey;
 	}
 
 	/**
@@ -185,7 +181,8 @@ abstract public class PluginBase implements FredPlugin, FredPluginThreadless, Fr
 				log("IdentifierCollision");
 
 				// redirect deprecated usk edition
-			} else if (message.getName().equals("GetFailed") && message.get("RedirectUri") != null && !message.get("RedirectUri").equals("")) {
+			} else if (message.getName().equals("GetFailed") && (message.get("RedirectUri") != null) &&
+					!message.get("RedirectUri").equals("")) {
 				log("USK redirected (" + message.getIdentifier() + ")");
 				// reg new edition
 				String cPagename = message.getIdentifier().split("_")[0];
@@ -237,10 +234,10 @@ abstract public class PluginBase implements FredPlugin, FredPluginThreadless, Fr
 	private void loadProp() {
 		try {
 
-			if (cPropFilename != null) {
+			if (strPropFilename != null) {
 				prop = new Properties();
-				File file = new File(cPath + "/" + cPropFilename);
-				File oldFile = new File(cPath + "/" + cPropFilename + ".old");
+				File file = new File(strPath + "/" + strPropFilename);
+				File oldFile = new File(strPath + "/" + strPropFilename + ".old");
 
 				FileInputStream is;
 				//always load from the backup if it exists, it is (almost?)
@@ -265,13 +262,13 @@ abstract public class PluginBase implements FredPlugin, FredPluginThreadless, Fr
 	// methods to use in the derived page class:
 	// ******************************************
 	// log files
-	private synchronized void initLog(String cFilename) {
+	private synchronized void initLog(String strFilename) {
 		try {
 
-			if (!mLogFiles.containsKey(cFilename)) {
-				RandomAccessFile file = new RandomAccessFile(cPath + "/" + cFilename, "rw");
+			if (!mLogFiles.containsKey(strFilename)) {
+				RandomAccessFile file = new RandomAccessFile(strPath + "/" + strFilename, "rw");
 				file.seek(file.length());
-				mLogFiles.put(cFilename, file);
+				mLogFiles.put(strFilename, file);
 			}
 
 		} catch (IOException e) {
@@ -279,31 +276,31 @@ abstract public class PluginBase implements FredPlugin, FredPluginThreadless, Fr
 		}
 	}
 
-	public synchronized void log(String cFilename, String cText, int nLogLevel) {
+	public synchronized void log(String strFilename, String cText, int nLogLevel) {
 		try {
 
 			if (nLogLevel <= getIntProp("loglevel")) {
-				initLog(cFilename);
-				mLogFiles.get(cFilename).writeBytes(dateFormat.format(new Date()) + "  " + cText + "\n");
+				initLog(strFilename);
+				mLogFiles.get(strFilename).writeBytes(dateFormat.format(new Date()) + "  " + cText + "\n");
 			}
 
 		} catch (Exception e) {
-			if (!cFilename.equals("log.txt")) // to avoid infinite loop when log.txt was closed on shutdown
+			if (!strFilename.equals("log.txt")) // to avoid infinite loop when log.txt was closed on shutdown
 			{
 				log("PluginBase.log(): " + e.getMessage());
 			}
 		}
 	}
 
-	public void log(String cFilename, String cText) {
-		log(cFilename, cText, 0);
+	public void log(String strFilename, String strText) {
+		log(strFilename, strText, 0);
 	}
 
-	public synchronized String getLog(String cFilename) {
+	public synchronized String getLog(String strFilename) {
 		try {
 
-			initLog(cFilename);
-			RandomAccessFile file = mLogFiles.get(cFilename);
+			initLog(strFilename);
+			RandomAccessFile file = mLogFiles.get(strFilename);
 			file.seek(0);
 			StringBuilder buffer;
 			buffer = new StringBuilder();
@@ -319,11 +316,11 @@ abstract public class PluginBase implements FredPlugin, FredPluginThreadless, Fr
 		}
 	}
 
-	public void clearLog(String cFilename) {
+	public void clearLog(String strFilename) {
 		try {
 
-			initLog(cFilename);
-			mLogFiles.get(cFilename).setLength(0);
+			initLog(strFilename);
+			mLogFiles.get(strFilename).setLength(0);
 
 		} catch (IOException e) {
 			log("PluginBase.clearLog(): " + e.getMessage());
@@ -361,7 +358,7 @@ abstract public class PluginBase implements FredPlugin, FredPluginThreadless, Fr
 		log("log.txt", cText, nLogLevel);
 	}
 
-	public void clearLog() {
+	protected void clearLog() {
 		clearLog("log.txt");
 	}
 
@@ -370,22 +367,22 @@ abstract public class PluginBase implements FredPlugin, FredPluginThreadless, Fr
 	}
 
 	// methods to set the version of the plugin
-	protected void setVersion(String cVersion) {
-		this.cVersion = cVersion;
+	protected void setVersion(String strVersion) {
+		this.strVersion = strVersion;
 	}
 
 	// methods to add the plugin to the nodes' main menu (fproxy)
-	protected void addPluginToMenu(String cMenuTitle, String cMenuTooltip) {
-		this.cMenuTitle = cMenuTitle;
-		this.cMenuTooltip = cMenuTooltip;
+	protected void addPluginToMenu(String strMenuTitle, String strMenuTooltip) {
+		this.strMenuTitle = strMenuTitle;
+		this.strMenuTooltip = strMenuTooltip;
 	}
 
 	// methods to add menu items to the plugins menu (fproxy)
-	protected void addMenuItem(String cTitle, String cTooltip, String cUri, boolean bFullAccessHostsOnly) {
+	protected void addMenuItem(String strTitle, String strTooltip, String strUri, boolean isFullAccessHostsOnly) {
 		try {
 
-			pagemaker.addNavigationLink(getCategory(), cUri, cTitle, cTooltip, bFullAccessHostsOnly, null, this);
-			log("item '" + cTitle + "' added to menu");
+			pagemaker.addNavigationLink(getCategory(), strUri, strTitle, strTooltip, isFullAccessHostsOnly, null, this);
+			log("item '" + strTitle + "' added to menu");
 
 		} catch (Exception e) {
 			log("PluginBase.addMenuItem(): " + e.getMessage());
@@ -408,16 +405,16 @@ abstract public class PluginBase implements FredPlugin, FredPluginThreadless, Fr
 		try {
 
 			if (prop != null) {
-				File file = new File(cPath + "/" + cPropFilename);
-				File oldFile = new File(cPath + "/" + cPropFilename + ".old");
-				File newFile = new File(cPath + "/" + cPropFilename + ".new");
+				File file = new File(strPath + "/" + strPropFilename);
+				File oldFile = new File(strPath + "/" + strPropFilename + ".old");
+				File newFile = new File(strPath + "/" + strPropFilename + ".new");
 
 				if (newFile.exists()) {
 					newFile.delete();
 				}
 
 				try (FileOutputStream stream = new FileOutputStream(newFile)) {
-					prop.store(stream, cTitle);
+					prop.store(stream, strTitle);
 					stream.flush();
 				}
 				
@@ -437,42 +434,42 @@ abstract public class PluginBase implements FredPlugin, FredPluginThreadless, Fr
 		}
 	}
 
-	public void setProp(String cKey, String cValue) throws Exception {
+	public void setProp(String strKey, String strValue) throws Exception {
 		try {
 
-			prop.setProperty(cKey, cValue);
+			prop.setProperty(strKey, strValue);
 
 		} catch (Exception e) {
 			throw new Exception("PluginBase.setProp(): " + e.getMessage());
 		}
 	}
 
-	public String getProp(String cKey) throws Exception {
+	public String getProp(String strKey) throws Exception {
 		try {
 
-			return prop.getProperty(cKey);
+			return prop.getProperty(strKey);
 
 		} catch (Exception e) {
 			throw new Exception("PluginBase.getProp(): " + e.getMessage());
 		}
 	}
 
-	public void setIntProp(String cKey, int nValue) throws Exception {
+	public void setIntProp(String strKey, int nValue) throws Exception {
 		try {
 
-			prop.setProperty(cKey, String.valueOf(nValue));
+			prop.setProperty(strKey, String.valueOf(nValue));
 
 		} catch (Exception e) {
 			throw new Exception("PluginBase.setIntProp(): " + e.getMessage());
 		}
 	}
 
-	public int getIntProp(String cKey) throws Exception {
+	public int getIntProp(String strKey) throws Exception {
 		try {
 
-			String cValue = getProp(cKey);
-			if (cValue != null && !cValue.equals("")) {
-				return Integer.parseInt(cValue);
+			String strValue = getProp(strKey);
+			if (strValue != null && !strValue.equals("")) {
+				return Integer.parseInt(strValue);
 			} else {
 				return 0;
 			}
@@ -482,21 +479,21 @@ abstract public class PluginBase implements FredPlugin, FredPluginThreadless, Fr
 		}
 	}
 
-	public void removeProp(String cKey) {
+	protected void removeProp(String strKey) {
 		try {
 
-			prop.remove(cKey);
+			prop.remove(strKey);
 
 		} catch (Exception e) {
 			log("PluginBase.removeProp(): " + e.getMessage());
 		}
 	}
 
-	public void clearProp() {
+	protected void clearProp() {
 		prop.clear();
 	}
 
-	public void setTimezoneUTC() {
+	protected void setTimezoneUTC() {
 		dateFormat = new SimpleDateFormat("yyyy.MM.dd_HH.mm_ss");
 		dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
 	}

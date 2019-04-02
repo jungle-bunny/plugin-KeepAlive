@@ -19,19 +19,22 @@
 package pluginbase;
 
 import pluginbase.de.todesbaum.util.freenet.fcp2.Connection;
+
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 public class FcpCommands extends FcpCommandBase {
 
-	public FcpCommands(Connection fcpConnection, PageBase page) {
+	FcpCommands(Connection fcpConnection, PageBase page) {
 		super(fcpConnection, page);
 	}
 
-	public void sendGenerateSSK(String cId) throws Exception {
+	public void sendGenerateSSK(String strId) throws Exception {
 		try {
 
-			init("GenerateSSK", cId);
+			init("GenerateSSK", strId);
 			send();
 
 		} catch (Exception e) {
@@ -39,11 +42,11 @@ public class FcpCommands extends FcpCommandBase {
 		}
 	}
 
-	public void sendClientGet(String cId, String cUri) throws Exception {
+	public void sendClientGet(String strId, String strUri) throws Exception {
 		try {
 
-			init("ClientGet", cId);
-			field("URI", cUri);
+			init("ClientGet", strId);
+			field("URI", strUri);
 			send();
 
 		} catch (Exception e) {
@@ -51,11 +54,11 @@ public class FcpCommands extends FcpCommandBase {
 		}
 	}
 
-	public void sendClientPut(String cId, String cUri, InputStream dataStream, int nDataLength) throws Exception {
+	public void sendClientPut(String strId, String strUri, InputStream dataStream, int nDataLength) throws Exception {
 		try {
 
-			init("ClientPut", cId);
-			field("URI", cUri);
+			init("ClientPut", strId);
+			field("URI", strUri);
 			field("DataLength", nDataLength);
 			send(dataStream, nDataLength);
 
@@ -67,7 +70,7 @@ public class FcpCommands extends FcpCommandBase {
 	public void sendClientPut(String cId, String cUri, String cContent) throws Exception {
 		try {
 
-			byte[] aContent = cContent.getBytes("UTF-8");
+			byte[] aContent = cContent.getBytes(UTF_8);
 			ByteArrayInputStream dataStream = new ByteArrayInputStream(aContent);
 			sendClientPut(cId, cUri, dataStream, aContent.length);
 

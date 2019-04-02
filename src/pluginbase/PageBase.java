@@ -33,36 +33,36 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.IOException;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.util.TreeMap;
 import java.util.ArrayList;
 
+import static java.nio.charset.StandardCharsets.*;
+
 abstract public class PageBase extends Toadlet implements FredPluginL10n {
+
+	public PluginBase plugin;
 
 	protected FcpCommands fcp;
 
-	public PluginBase plugin;
-	PageNode page;
-	ArrayList<HTMLNode> vBoxes = new ArrayList();
-	TreeMap<String, Message> mMessages = new TreeMap<>();
-	String cPageName;
-	String cPageTitle;
-	String cMenuTitle = null;
-	String cMenuTooltip = null;
-	String cRefreshTarget;
-	int nRefreshPeriod = -1;
-	URI uri;
-	HTTPRequest httpRequest;
-	TreeMap<String, String> mRedirectURIs = new TreeMap<>();
-	private String cRedirectURI;
+	private PageNode page;
+	private ArrayList<HTMLNode> vBoxes = new ArrayList();
+	private TreeMap<String, Message> mMessages = new TreeMap<>();
+	private String strPageName;
+	private String strPageTitle;
+	private String strRefreshTarget;
+	private int nRefreshPeriod = -1;
+	private URI uri;
+	private HTTPRequest httpRequest;
+	private TreeMap<String, String> mRedirectURIs = new TreeMap<>();
+	private String strRedirectURI;
 	private boolean bFullAccessHostsOnly;
 
 	public PageBase(String cPageName, String cPageTitle, PluginBase plugin, boolean bFullAccessHostsOnly) {
 		super(plugin.pluginContext.node.clientCore.makeClient((short) 3, false, false));
 
 		try {
-			this.cPageName = cPageName;
-			this.cPageTitle = cPageTitle;
+			this.strPageName = cPageName;
+			this.strPageTitle = cPageTitle;
 			this.plugin = plugin;
 			this.bFullAccessHostsOnly = bFullAccessHostsOnly;
 
@@ -79,12 +79,12 @@ abstract public class PageBase extends Toadlet implements FredPluginL10n {
 	}
 
 	public String getName() {
-		return cPageName;
+		return strPageName;
 	}
 
 	@Override
 	public String path() {
-		return plugin.getPath() + "/" + cPageName;
+		return plugin.getPath() + "/" + strPageName;
 	}
 
 	/**
@@ -175,17 +175,18 @@ abstract public class PageBase extends Toadlet implements FredPluginL10n {
 	private void makePage(URI uri, ToadletContext ctx) throws Exception {
 		try {
 
-			page = plugin.pagemaker.getPageNode(cPageTitle, ctx);
+			page = plugin.pagemaker.getPageNode(strPageTitle, ctx);
 
 			// refresh page
 			if (nRefreshPeriod != -1) {
-				if (cRefreshTarget == null) {
-					cRefreshTarget = uri.getPath();
+				if (strRefreshTarget == null) {
+					strRefreshTarget = uri.getPath();
 					if (uri.getQuery() != null) {
-						cRefreshTarget += "?" + uri.getQuery();
+						strRefreshTarget += "?" + uri.getQuery();
 					}
 				}
-				page.headNode.addChild("meta", new String[]{"http-equiv", "content"}, new String[]{"refresh", nRefreshPeriod + ";URL=" + cRefreshTarget});
+				page.headNode.addChild("meta", new String[]{"http-equiv", "content"},
+						new String[]{"refresh", nRefreshPeriod + ";URL=" + strRefreshTarget});
 			}
 
 			// boxes
@@ -205,21 +206,22 @@ abstract public class PageBase extends Toadlet implements FredPluginL10n {
 	// methods to use in the derived plugin class:
 	// ********************************************
 	// file log
-	public void log(String cText, int nLogLevel) {
-		plugin.log(cText, nLogLevel);
+	public void log(String strText, int nLogLevel) {
+		plugin.log(strText, nLogLevel);
 	}
 
-	public void log(String cText) {
-		plugin.log(cText);
+	public void log(String strText) {
+		plugin.log(strText);
 	}
 
 	// methods to add this page to the plugins' menu (fproxy)
-	protected void addPageToMenu(String cMenuTitle, String cMenuTooltip) {
+	protected void addPageToMenu(String strMenuTitle, String strMenuTooltip) {
 		try {
 
 			plugin.pluginContext.pluginRespirator.getToadletContainer().unregister(this);
-			plugin.pluginContext.pluginRespirator.getToadletContainer().register(this, plugin.getCategory(), this.path(), true, cMenuTitle, cMenuTooltip, bFullAccessHostsOnly, null);
-			log("page '" + cPageName + "' added to menu");
+			plugin.pluginContext.pluginRespirator.getToadletContainer().register(this, plugin.getCategory(),
+					this.path(), true, strMenuTitle, strMenuTooltip, bFullAccessHostsOnly, null);
+			log("page '" + strPageName + "' added to menu");
 
 		} catch (Exception e) {
 			log("PageBase.addPageToMenu(): " + e.getMessage(), 1);
@@ -227,12 +229,12 @@ abstract public class PageBase extends Toadlet implements FredPluginL10n {
 	}
 
 	// methods to build the page
-	protected void addBox(String cTitle, String cHtmlBody) {
+	protected void addBox(String strTitle, String strHtmlBody) {
 		try {
 
-			InfoboxNode box = plugin.pagemaker.getInfobox(cTitle);
-			cHtmlBody = cHtmlBody.replaceAll("'", "\"");
-			box.content.addChild("%", cHtmlBody);
+			InfoboxNode box = plugin.pagemaker.getInfobox(strTitle);
+			strHtmlBody = strHtmlBody.replaceAll("'", "\"");
+			box.content.addChild("%", strHtmlBody);
 			vBoxes.add(box.outer);
 
 		} catch (Exception e) {
@@ -252,16 +254,16 @@ abstract public class PageBase extends Toadlet implements FredPluginL10n {
 			while ((len = stream.read(contentBytes)) != -1)
 				content.write(contentBytes, 0, len);
 
-			return content.toString(StandardCharsets.UTF_8.name()).replaceAll("\\$\\{formPassword}", formPassword);
+			return content.toString(UTF_8.name()).replaceAll("\\$\\{formPassword}", formPassword);
 		} catch (IOException e) {
 			throw new Exception("PageBase.html(): " + e.getMessage());
 		}
 	}
 
 	// methods to make the page refresh
-	protected void setRefresh(int nPeriod, String cTarget) {
+	protected void setRefresh(int nPeriod, String strTarget) {
 		this.nRefreshPeriod = nPeriod;
-		this.cRefreshTarget = cTarget;
+		this.strRefreshTarget = strTarget;
 	}
 
 	protected void setRefresh(int nPeriod) {
@@ -285,15 +287,15 @@ abstract public class PageBase extends Toadlet implements FredPluginL10n {
 		return httpRequest;
 	}
 
-	protected String getParam(String cKey) throws Exception {
+	protected String getParam(String strKey) throws Exception {
 		try {
 
-			if (httpRequest.getMethod().toUpperCase().equals("GET") && !httpRequest.getParam(cKey).equals("")) {
-				return httpRequest.getParam(cKey);
-			} else if (httpRequest.getMethod().toUpperCase().equals("POST") && httpRequest.getPart(cKey) != null) {
-				byte[] aContent = new byte[(int) httpRequest.getPart(cKey).size()];
-				httpRequest.getPart(cKey).getInputStream().read(aContent);
-				return new String(aContent, "UTF-8");
+			if (httpRequest.getMethod().toUpperCase().equals("GET") && !httpRequest.getParam(strKey).equals("")) {
+				return httpRequest.getParam(strKey);
+			} else if (httpRequest.getMethod().toUpperCase().equals("POST") && httpRequest.getPart(strKey) != null) {
+				byte[] aContent = new byte[(int) httpRequest.getPart(strKey).size()];
+				httpRequest.getPart(strKey).getInputStream().read(aContent);
+				return new String(aContent, UTF_8);
 			} else {
 				return null;
 			}
@@ -323,7 +325,7 @@ abstract public class PageBase extends Toadlet implements FredPluginL10n {
 			}
 			if (message != null) {
 				mMessages.remove(cId);
-				cRedirectURI = mRedirectURIs.get(cId);
+				strRedirectURI = mRedirectURIs.get(cId);
 				mRedirectURIs.remove(cId);
 			}
 			return message;                 // returns null if no message
@@ -334,7 +336,7 @@ abstract public class PageBase extends Toadlet implements FredPluginL10n {
 	}
 
 	protected String getRedirectURI() {
-		return cRedirectURI;
+		return strRedirectURI;
 	}
 
 	protected String[] getSSKKeypair(String cId) {

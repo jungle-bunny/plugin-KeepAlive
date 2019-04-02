@@ -43,7 +43,7 @@ public class TempFileInputStream extends FileInputStream {
 	 * @param file
 	 * @throws FileNotFoundException
 	 */
-	public TempFileInputStream(File file) throws FileNotFoundException {
+	protected TempFileInputStream(File file) throws FileNotFoundException {
 		super(file);
 		tempFile = file;
 	}

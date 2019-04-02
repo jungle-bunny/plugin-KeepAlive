@@ -41,7 +41,7 @@ public abstract class Command {
 	/**
 	 * The line feed sequence used by the library.
 	 */
-	protected static final String LINEFEED = "\r\n";
+	static final String LINEFEED = "\r\n";
 
 	/**
 	 * The name of the command. The name is sent to the node so it can not be
