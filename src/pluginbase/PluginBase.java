@@ -50,6 +50,7 @@ abstract public class PluginBase implements FredPlugin, FredPluginThreadless,
 	PageMaker pagemaker;
 	WebInterface webInterface;
 	Connection fcpConnection;
+	LANGUAGE nodeLanguage;
 
 	private Properties prop;
 	private String strTitle;
@@ -144,7 +145,7 @@ abstract public class PluginBase implements FredPlugin, FredPluginThreadless,
 	 */
 	@Override
 	public void setLanguage(LANGUAGE language) {         // FredPluginL10n
-		LANGUAGE nodeLanguage = language;
+		nodeLanguage = language;
 	}
 
 	@Override
