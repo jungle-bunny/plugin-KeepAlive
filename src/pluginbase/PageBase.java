@@ -240,7 +240,7 @@ abstract public class PageBase extends Toadlet implements FredPluginL10n {
 		}
 	}
 
-	protected String html(String name) throws Exception {
+	protected String html(String name, String formPassword) throws Exception {
 		try (InputStream stream =
 						getClass()
 							 .getResourceAsStream("/resources/templates/" + name + ".html")) {
@@ -252,8 +252,7 @@ abstract public class PageBase extends Toadlet implements FredPluginL10n {
 			while ((len = stream.read(contentBytes)) != -1)
 				content.write(contentBytes, 0, len);
 
-			return content.toString(StandardCharsets.UTF_8.name());
-
+			return content.toString(StandardCharsets.UTF_8.name()).replaceAll("\\$\\{formPassword}", formPassword);
 		} catch (IOException e) {
 			throw new Exception("PageBase.html(): " + e.getMessage());
 		}

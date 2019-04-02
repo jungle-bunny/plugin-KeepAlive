@@ -31,68 +31,72 @@ public class AdminPage extends PageBase {
 
 	private Plugin plugin;
 
-	public AdminPage(Plugin plugin) {
+	private final String formPassword;
+
+	public AdminPage(Plugin plugin, String formPassword) {
 		super("", "Keep Alive", plugin, true);
 		this.plugin = plugin;
+		this.formPassword = formPassword;
 		addPageToMenu("Start reinsertion of sites", "Add or remove sites you like to reinsert");
 	}
 
 	@Override
 	protected void handleRequest() {
 		try {
+			if (formPassword.equals(getParam("formPassword"))) {
+				// start reinserter
+				if (getParam("start") != null) {
+					plugin.startReinserter(getIntParam("start"));
+				}
 
-			// start reinserter
-			if (getParam("start") != null) {
-				plugin.startReinserter(getIntParam("start"));
-			}
+				// stop reinserter
+				if (getParam("stop") != null) {
+					plugin.stopReinserter();
+				}
 
-			// stop reinserter
-			if (getParam("stop") != null) {
-				plugin.stopReinserter();
-			}
+				// modify power
+				if (getParam("modify_power") != null) {
+					setIntPropByParam("power", 1);
+					saveProp();
+				}
 
-			// modify power
-			if (getParam("modify_power") != null) {
-				setIntPropByParam("power", 1);
-				saveProp();
-			}
+				// modify splitfile tolerance
+				if (getParam("splitfile_tolerance") != null) {
+					setIntPropByParam("splitfile_tolerance", 0);
+					saveProp();
+				}
 
-			// modify splitfile tolerance
-			if (getParam("splitfile_tolerance") != null) {
-				setIntPropByParam("splitfile_tolerance", 0);
-				saveProp();
-			}
+				// modify splitfile tolerance
+				if (getParam("splitfile_test_size") != null) {
+					setIntPropByParam("splitfile_test_size", 10);
+					saveProp();
+				}
 
-			// modify splitfile tolerance
-			if (getParam("splitfile_test_size") != null) {
-				setIntPropByParam("splitfile_test_size", 10);
-				saveProp();
-			}
+				// modify log level
+				if (getParam("modify_loglevel") != null || getParam("show_log") != null) {
+					setIntPropByParam("loglevel", 0);
+					saveProp();
+				}
 
-			// modify log level
-			if (getParam("modify_loglevel") != null || getParam("show_log") != null) {
-				setIntPropByParam("loglevel", 0);
-				saveProp();
-			}
+				// clear logs
+				if (getParam("clear_logs") != null) {
+					plugin.clearAllLogs();
+				}
 
-			// clear logs
-			if (getParam("clear_logs") != null) {
-				plugin.clearAllLogs();
-			}
+				// clear history
+				if (getParam("clear_history") != null) {
+					removeProp("history_" + getParam("clear_history"));
+				}
 
-			// clear history
-			if (getParam("clear_history") != null) {
-				removeProp("history_" + getParam("clear_history"));
-			}
+				// add uris
+				if (getParam("uris") != null) {
+					addUris();
+				}
 
-			// add uris
-			if (getParam("uris") != null) {
-				addUris();
-			}
-
-			// remove uri
-			if (getParam("remove") != null) {
-				removeUri();
+				// remove uri
+				if (getParam("remove") != null) {
+					removeUri();
+				}
 			}
 
 			// boxes
@@ -105,7 +109,7 @@ public class AdminPage extends PageBase {
 
 			// info box
 			addBox("Information",
-				 html("info").replaceAll("#1", plugin.getVersion()));
+				 html("info", formPassword).replaceAll("#1", plugin.getVersion()));
 
 		} catch (Exception e) {
 			log("AdminPage.handleRequest(): " + Debug.stackTrace(e));
@@ -127,6 +131,8 @@ public class AdminPage extends PageBase {
 
 			html.append("</td><td><a href=\"?clear_history=")
 				 .append(id)
+				 .append("&formPassword=")
+				 .append(formPassword)
 				 .append("\">clear</a></td></tr>");
 		}
 		html.append("</table>");
@@ -134,7 +140,7 @@ public class AdminPage extends PageBase {
 	}
 
 	private void configurationBox() throws Exception {
-		StringBuilder html = new StringBuilder(html("properties"));
+		StringBuilder html = new StringBuilder(html("properties", formPassword));
 		html = new StringBuilder(html.toString().replaceAll("#1", getProp("power")));
 		html = new StringBuilder(html.toString().replaceAll("#2", getProp("loglevel")));
 		html = new StringBuilder(html.toString().replaceAll("#3", getProp("splitfile_tolerance")));
@@ -167,7 +173,7 @@ public class AdminPage extends PageBase {
 	}
 
 	private void sitesBox(int[] ids) throws Exception {
-		StringBuilder html = new StringBuilder(html("add_key"))
+		StringBuilder html = new StringBuilder(html("add_key", formPassword))
 			 .append("<br><table><tr style=\"text-align:center;\">")
 			 .append("<td>URI</td><td>total<br>blocks</td>")
 			 .append("<td>available<br>blocks</td><td>missed<br>blocks</td>")
@@ -207,17 +213,25 @@ public class AdminPage extends PageBase {
 				 .append(segmentsAvailability)
 				 .append(" %</td><td><a href='?remove=")
 				 .append(id)
+				 .append("&formPassword=")
+				 .append(formPassword)
 				 .append("'>remove</a></td><td><a href='?log=")
 				 .append(id)
+				 .append("&formPassword=")
+				 .append(formPassword)
 				 .append("'>log</a></td>");
 
 			if (id == getIntProp("active"))
 				html.append("<td><a href='?stop=")
 					 .append(id)
+					 .append("&formPassword=")
+					 .append(formPassword)
 					 .append("'>stop</a></td><td><b>active</b></td>");
 			else
 				html.append("<td><a href='?start=")
 					 .append(id)
+					 .append("&formPassword=")
+					 .append(formPassword)
 					 .append("'>start</a></td><td></td>");
 
 			html.append("</tr>");
@@ -240,7 +254,7 @@ public class AdminPage extends PageBase {
 
 		if (zeroBlockSites.length() > 0)
 			addBox("Unsupported keys",
-				 html("unsupported_keys").replaceAll("#", zeroBlockSites.toString()));
+				 html("unsupported_keys", formPassword).replaceAll("#", zeroBlockSites.toString()));
 	}
 
 	private void addUris() throws Exception {

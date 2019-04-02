@@ -71,7 +71,7 @@ public class Plugin extends PluginBase {
 			saveProp();
 
 			// build page and menu
-			addPage(new AdminPage(this));
+			addPage(new AdminPage(this, pluginContext.node.clientCore.formPassword));
 			addMenuItem("Documentation", "Go to the documentation site",
 				 "/USK@l9wlbjlCA7kfcqzpBsrGtLoAB4-Ro3vZ6q2p9bQ~5es,bGAKUAFF8UryI04sxBKnIQSJWTSa08BDS-8jmVQdE4o,AQACAAE/keepalive/15", true);
 
