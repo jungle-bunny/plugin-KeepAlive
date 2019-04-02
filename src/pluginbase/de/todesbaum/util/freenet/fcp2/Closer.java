@@ -122,7 +122,7 @@ public class Closer {
 	 * @param inputStream The input stream to close
 	 * @see InputStream#close()
 	 */
-	public static void close(InputStream inputStream) {
+	static void close(InputStream inputStream) {
 		if (inputStream != null) {
 			try {
 				inputStream.close();

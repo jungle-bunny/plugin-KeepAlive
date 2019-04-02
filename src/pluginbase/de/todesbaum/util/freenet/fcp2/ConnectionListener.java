@@ -34,13 +34,13 @@ public interface ConnectionListener extends EventListener {
 	 * @param connection The connection the message was received on
 	 * @param message The message that was received
 	 */
-	public void messageReceived(Connection connection, Message message);
+	void messageReceived(Connection connection, Message message);
 
 	/**
 	 * Notifies a client that the connection to the node has been lost.
 	 *
 	 * @param connection The connection that was lost
 	 */
-	public void connectionTerminated(Connection connection);
+	void connectionTerminated(Connection connection);
 
 }

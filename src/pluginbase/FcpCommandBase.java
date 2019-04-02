@@ -27,14 +27,14 @@ import pluginbase.de.todesbaum.util.freenet.fcp2.Connection;
 
 abstract public class FcpCommandBase extends Command {
 
-	protected PageBase page;
-	private final Connection fcpConnection;
-	private String cCommandName;
-	private final ArrayList<String> vFields = new ArrayList<>();
+	private PageBase page;
+	private String strCommandName;
 	private InputStream dataStream;
 	private int nDataLength;
+	private final Connection fcpConnection;
+	private final ArrayList<String> vFields = new ArrayList<>();
 
-	public FcpCommandBase(Connection fcpConnection, PageBase page) {
+	FcpCommandBase(Connection fcpConnection, PageBase page) {
 		super(null, null);
 		this.fcpConnection = fcpConnection;
 		this.page = page;
@@ -47,14 +47,14 @@ abstract public class FcpCommandBase extends Command {
 
 	@Override
 	public String getCommandName() {
-		return cCommandName;
+		return strCommandName;
 	}
 
-	public void setCommandName(String cCommandName) {
-		this.cCommandName = cCommandName;
+	void setCommandName(String strCommandName) {
+		this.strCommandName = strCommandName;
 	}
 
-	public String getIdentifier(String cIdentifier) throws Exception {
+	private String getIdentifier(String cIdentifier) throws Exception {
 		try {
 
 			return page.getName() + "_" + cIdentifier + "_" + System.currentTimeMillis();
@@ -93,35 +93,35 @@ abstract public class FcpCommandBase extends Command {
 		}
 	}
 
-	protected void init(String cCommand, String cIdentifierSuffix) throws Exception {
+	protected void init(String strCommand, String strIdentifierSuffix) throws Exception {
 		try {
 
-			if (cIdentifierSuffix == null) {
-				cIdentifierSuffix = "";
+			if (strIdentifierSuffix == null) {
+				strIdentifierSuffix = "";
 			}
 			vFields.clear();
-			setCommandName(cCommand);
-			field("Identifier", getIdentifier(cIdentifierSuffix));
+			setCommandName(strCommand);
+			field("Identifier", getIdentifier(strIdentifierSuffix));
 
 		} catch (Exception e) {
 			throw new Exception("FcpCommandBase.init(): " + e.getMessage());
 		}
 	}
 
-	protected void field(String cKey, String cValue) throws Exception {
+	protected void field(String strKey, String strValue) throws Exception {
 		try {
 
-			vFields.add(cKey + "=" + cValue);
+			vFields.add(strKey + "=" + strValue);
 
 		} catch (Exception e) {
 			throw new Exception("FcpCommandBase.field(): " + e.getMessage());
 		}
 	}
 
-	protected void field(String cKey, int nValue) throws Exception {
+	protected void field(String strKey, int nValue) throws Exception {
 		try {
 
-			vFields.add(cKey + "=" + nValue);
+			vFields.add(strKey + "=" + nValue);
 
 		} catch (Exception e) {
 			throw new Exception("FcpCommandBase.field(): " + e.getMessage());

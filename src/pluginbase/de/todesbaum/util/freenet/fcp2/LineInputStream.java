@@ -30,7 +30,7 @@ import java.io.InputStream;
  */
 public class LineInputStream extends FilterInputStream {
 
-	private boolean skipLinefeed = false;
+	private boolean skipLinefeed;
 	private final StringBuffer lineBuffer = new StringBuffer();
 
 	/**

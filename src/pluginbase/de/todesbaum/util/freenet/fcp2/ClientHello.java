@@ -42,12 +42,12 @@ public class ClientHello extends Command {
 	/**
 	 * The version of the FCP protocol the client expects.
 	 */
-	protected String expectedVersion = "2.0";
+	private String expectedVersion = "2.0";
 
 	/**
 	 * Creates a new <code>ClientHello</code> command.
 	 */
-	public ClientHello() {
+	protected ClientHello() {
 		super("ClientHello", "ClientHello-" + System.currentTimeMillis());
 	}
 
@@ -69,7 +69,7 @@ public class ClientHello extends Command {
 	 *
 	 * @param expectedVersion The expected version
 	 */
-	public void setExpectedVersion(String expectedVersion) {
+	protected void setExpectedVersion(String expectedVersion) {
 		this.expectedVersion = expectedVersion;
 	}
 
