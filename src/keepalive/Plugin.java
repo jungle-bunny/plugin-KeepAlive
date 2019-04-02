@@ -32,7 +32,7 @@ public class Plugin extends PluginBase {
 
 	public Plugin() {
 		super("KeepAlive", "KeepAlive", "prop.txt");
-		setVersion("0.3.3.7-TS");
+		setVersion("0.3.3.7-RW");
 		addPluginToMenu("KeepAlive", "Reinsert sites and files in the background");
 		clearLog();
 	}
