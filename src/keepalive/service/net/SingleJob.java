@@ -16,33 +16,36 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
-package keepalive.service;
+package keepalive.service.net;
 
+import freenet.keys.FreenetURI;
+import freenet.support.compress.Compressor;
 import keepalive.Plugin;
-import keepalive.Reinserter;
+import keepalive.service.reinserter.Reinserter;
 import keepalive.model.Block;
 
-public class SingleJob extends Thread {
+public abstract class SingleJob extends Thread {
 
 	public static final int MAX_LIFETIME = 30;
-	Reinserter reinserter;
-	String cJobType;
+
 	Plugin plugin;
+	Reinserter reinserter;
 	Block block;
-	boolean bActive = true;
-	byte[] aExtra;
-	String cCompressor;
+	byte[] uriExtra;
+	String compressionAlgorithm;
 
-	public SingleJob(Reinserter reinserter, String cJobType, Block block) {
+	private String jobType;
+	private boolean active = true;
 
+	SingleJob(Reinserter reinserter, String jobType, Block block) {
 		this.reinserter = reinserter;
-		this.cJobType = cJobType;
+		this.jobType = jobType;
 		this.block = block;
-		this.plugin = reinserter.plugin;
+		this.plugin = reinserter.getPlugin();
 		this.setName("KeepAlive SingleJob");
 
 		// init
-		reinserter.nActiveSingleJobCount++;
+		reinserter.incrementActiveSingleJobCount();
 	}
 
 	@Override
@@ -50,20 +53,41 @@ public class SingleJob extends Thread {
 		try {
 
 			// start lifetime guard
-			(new ActivityGuard(this, cJobType)).start();
+			(new ActivityGuard(this, jobType)).start();
 
 		} catch (Exception e) {
 			plugin.log("singleJob.run(): " + e.getMessage(), 0);
 		}
 	}
 
-	protected void finish() {
+	FreenetURI getUri() {
+		FreenetURI uri = block.getUri().clone();
+
+		// modify the control flag of the URI to get always the raw data
+		uriExtra = uri.getExtra();
+		uriExtra[2] = 0;
+
+		// get the compression algorithm of the block
+		if (uriExtra[4] >= 0)
+			compressionAlgorithm =
+				 Compressor.COMPRESSOR_TYPE.getCompressorByMetadataID((short) uriExtra[4]).name;
+		else
+			compressionAlgorithm = "none";
+
+		log("request: " + block.getUri().toString() +
+			 " (crypt=" + uriExtra[1] +
+			 ",control=" + block.getUri().getExtra()[2] +
+			 ",compress=" + uriExtra[4] + "=" + compressionAlgorithm + ")", 2);
+
+		return uri;
+	}
+
+	void finish() {
 		try {
 
 			if (reinserter.isActive()) {
-
 				// log
-				String cFirstLog = cJobType + ": " + block.getUri();
+				String cFirstLog = jobType + ": " + block.getUri();
 				if (!block.getFetchSuccessful() && !block.getInsertSuccessful()) {
 					cFirstLog = "<b>" + cFirstLog + "</b>";
 					block.setResultLog("<b>" + block.getResultLog() + "</b>");
@@ -72,8 +96,7 @@ public class SingleJob extends Thread {
 				log(block.getResultLog());
 
 				// finish
-				reinserter.nActiveSingleJobCount--;
-
+				reinserter.decrementActiveSingleJobCount();
 			}
 
 		} catch (Exception e) {
@@ -81,26 +104,26 @@ public class SingleJob extends Thread {
 		}
 	}
 
-	protected void log(String cMessage, int nLogLevel) {
+	protected void log(String message, int logLevel) {
 		if (reinserter.isActive()) {
-			reinserter.log(block.getSegmentId(), cMessage, 0, nLogLevel);
+			reinserter.log(block.getSegmentId(), message, 0, logLevel);
 		}
 	}
 
-	protected void log(String cMessage) {
-		log(cMessage, 1);
+	protected void log(String message) {
+		log(message, 1);
 	}
 
 	private class ActivityGuard extends Thread {
 
 		private final SingleJob singleJob;
-		private final long nStartTime;
-		private final String cType;
+		private final long startTime;
+		private final String type;
 
-		public ActivityGuard(SingleJob singleJob, String cType) {
+		ActivityGuard(SingleJob singleJob, String type) {
 			this.singleJob = singleJob;
-			this.cType = cType;
-			nStartTime = System.currentTimeMillis();
+			this.type = type;
+			startTime = System.currentTimeMillis();
 		}
 
 		@Override
@@ -115,7 +138,7 @@ public class SingleJob extends Thread {
 				// has timeout stop 
 				if (reinserter.isActive() && singleJob.isAlive()) {
 					singleJob.stop();
-					singleJob.block.appendResultLog("<b>-> " + cJobType + " aborted (timeout)</b>");
+					singleJob.block.appendResultLog("<b>-> " + jobType + " aborted (timeout)</b>");
 				}
 
 				// has stopped after reinserter stop
@@ -125,14 +148,14 @@ public class SingleJob extends Thread {
 					while (singleJob.isAlive() && nStopCheckBegin > System.currentTimeMillis() - 60 * 1000) {
 						try {
 							wait(1000);
-						} catch (InterruptedException e) {
+						} catch (InterruptedException ignored) {
 						}
 					}
 
 					if (!singleJob.isAlive()) {
-						plugin.log("single " + cType + " stopped (" + singleJob.reinserter.getSiteId() + ")");
+						plugin.log("single " + type + " stopped (" + singleJob.reinserter.getSiteId() + ")");
 					} else {
-						plugin.log("single " + cType +
+						plugin.log("single " + type +
 							 " not stopped  - stop was indicated 1 minute before (" +
 							 singleJob.reinserter.getSiteId() + ")");
 					}
@@ -144,7 +167,7 @@ public class SingleJob extends Thread {
 		}
 
 		private long getLifetime() {
-			return (System.currentTimeMillis() - nStartTime) / 60 / 1000;
+			return (System.currentTimeMillis() - startTime) / 60 / 1000;
 		}
 	}
 }

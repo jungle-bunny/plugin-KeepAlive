@@ -32,7 +32,7 @@ public class AdminPage extends PageBase {
 	private Plugin plugin;
 
 	public AdminPage(Plugin plugin) {
-		super("", "Keep Alive", plugin, true);
+		super("Keep Alive", "Keep Alive", plugin, true);
 		this.plugin = plugin;
 		addPageToMenu("Start reinsertion of sites", "Add or remove sites you like to reinsert");
 	}
@@ -169,10 +169,10 @@ public class AdminPage extends PageBase {
 	private void sitesBox(int[] ids) throws Exception {
 		StringBuilder html = new StringBuilder(html("add_key"))
 			 .append("<br><table><tr style=\"text-align:center;\">")
-			 .append("<td style='border:0'></td><td>total<br>blocks</td>")
+			 .append("<td>URI</td><td>total<br>blocks</td>")
 			 .append("<td>available<br>blocks</td><td>missed<br>blocks</td>")
 			 .append("<td>blocks<br>availability</td><td>segments<br>availability</td>")
-			 .append("<td style='border:0'></td><td style='border:0'></td>")
+			 .append("<td colspan='4'>Actions</td>")
 			 .append("</tr>");
 
 		for (int id : ids) {

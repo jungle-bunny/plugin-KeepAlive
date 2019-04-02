@@ -16,62 +16,48 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
-package keepalive.service;
+package keepalive.service.net;
 
 import freenet.client.FetchContext;
 import freenet.client.FetchException;
 import freenet.client.FetchResult;
 import freenet.client.HighLevelSimpleClientImpl;
 import freenet.keys.FreenetURI;
-import freenet.support.compress.Compressor;
 import freenet.support.io.ArrayBucket;
-import keepalive.Reinserter;
+import keepalive.service.reinserter.Reinserter;
 import keepalive.model.Block;
 
 import java.io.IOException;
 
 public class SingleFetch extends SingleJob {
 
-	boolean bPersistenceCheck;
+	private boolean persistenceCheck;
 
-	public SingleFetch(Reinserter reinserter, Block block, boolean bPersistenceCheck) {
+	public SingleFetch(Reinserter reinserter, Block block, boolean persistenceCheck) {
 		super(reinserter, "fetch", block);
 
-		this.setName("KeepAlive SingleFetch");
-		this.bPersistenceCheck = bPersistenceCheck;
+		setName("KeepAlive SingleFetch");
+		this.persistenceCheck = persistenceCheck;
 	}
 
 	@Override
 	public void run() {
 		super.run();
-        FetchResult fetchResult = null;
+		FetchResult fetchResult = null;
+
 		try {
 
 			// init
-			//HighLevelSimpleClientImpl hlsc = (HighLevelSimpleClientImpl) plugin.pluginContext.node.clientCore.makeClient((short) 3, false, false);
-			HLSCignoreStore hlscIgnoreStore = new HLSCignoreStore(plugin.getFreenetClient());
+			HLSCIgnoreStore hlscIgnoreStore = new HLSCIgnoreStore(plugin.getFreenetClient());
 
-			FreenetURI fetchUri = block.getUri().clone();
+			FreenetURI fetchUri = getUri();
 			block.setFetchDone(false);
 			block.setFetchSuccessful(false);
-
-			// modify the control flag of the URI to get always the raw data
-			byte[] aExtraF = fetchUri.getExtra();
-			aExtraF[2] = 0;
-
-			// get the compression algorithm of the block
-			String cCompressorF;
-			if (aExtraF[4] >= 0) {
-				cCompressorF = Compressor.COMPRESSOR_TYPE.getCompressorByMetadataID((short) aExtraF[4]).name;
-			} else {
-				cCompressorF = "none";
-			}
 
 			// request
 			try {
 
-				log("request: " + block.getUri().toString() + " (crypt=" + aExtraF[1] + ",control=" + block.getUri().getExtra()[2] + ",compress=" + aExtraF[4] + "=" + cCompressorF + ")", 2);
-				if (!bPersistenceCheck) {
+				if (!persistenceCheck) {
 					fetchResult = plugin.getFreenetClient().fetch(fetchUri);
 				} else {
 					fetchResult = hlscIgnoreStore.fetch(fetchUri);
@@ -99,17 +85,15 @@ public class SingleFetch extends SingleJob {
 
 		} catch (IOException e) {
 			plugin.log("SingleFetch.run(): " + e.getMessage(), 0);
+		} finally {
+			if (fetchResult != null && fetchResult.asBucket() != null)
+				fetchResult.asBucket().free();
 		}
-        finally{
-            if (fetchResult != null && fetchResult.asBucket() != null) {
-                fetchResult.asBucket().free();
-            }
-        }
 	}
 
-	private class HLSCignoreStore extends HighLevelSimpleClientImpl {
+	private class HLSCIgnoreStore extends HighLevelSimpleClientImpl {
 
-		public HLSCignoreStore(HighLevelSimpleClientImpl hlsc) {
+		HLSCIgnoreStore(HighLevelSimpleClientImpl hlsc) {
 			super(hlsc);
 		}
 

@@ -20,20 +20,20 @@ package keepalive;
 
 import freenet.client.HighLevelSimpleClientImpl;
 import freenet.pluginmanager.PluginRespirator;
+import keepalive.service.reinserter.Reinserter;
 import keepalive.web.AdminPage;
 import pluginbase.PluginBase;
 
 public class Plugin extends PluginBase {
 
-	AdminPage adminPage;
-	Reinserter reinserter;
-	long nPropSavingTimestamp;
-	HighLevelSimpleClientImpl hlsc;
+	private Reinserter reinserter;
+	private long propSavingTimestamp;
+	private HighLevelSimpleClientImpl hlsc;
 
 	public Plugin() {
-		super("KeepAlive", "Keep Alive", "prop.txt");
+		super("KeepAlive", "KeepAlive", "prop.txt");
 		setVersion("0.3.3.7-TS");
-		addPluginToMenu("Keep Alive", "Reinsert sites and files in the background");
+		addPluginToMenu("KeepAlive", "Reinsert sites and files in the background");
 		clearLog();
 	}
 
@@ -42,59 +42,42 @@ public class Plugin extends PluginBase {
 		super.runPlugin(pr);
 		try {
 			hlsc = (HighLevelSimpleClientImpl) pluginContext.node.clientCore.makeClient((short) 5, false, true);
+
 			// migrate from 0.2 to 0.3
 			if (getProp("version") == null || !getProp("version").substring(0, 3).equals("0.3")) {
+				int[] ids = getIds();
+
 				// remove boost params
-				int[] aIds = getIds();
-				for (int i = 0; i < aIds.length; i++) {
-					removeProp("boost_" + aIds[i]);
-				}
+				for (int aId : ids)
+					removeProp("boost_" + aId);
+
 				// empty all block list
-				for (int i = 0; i < aIds.length; i++) {
-					setProp("blocks_" + aIds[i], "?");
-				}
+				for (int aId : ids)
+					setProp("blocks_" + aId, "?");
+
 				setProp("version", "0.3.3.7-TS");
 			}
 
 			// initial values
-			if (getProp("loglevel") == null) {
-				setIntProp("loglevel", 1);
-			}
-			if (getProp("ids") == null) {
-				setProp("ids", "");
-			}
-			if (getProp("power") == null) {
-				setIntProp("power", 6);
-			}
-			if (getProp("active") == null) {
-				setIntProp("active", -1);
-			}
-			if (getProp("splitfile_tolerance") == null) {
-				setIntProp("splitfile_tolerance", 66);
-			}
-			if (getProp("splitfile_test_size") == null) {
-				setIntProp("splitfile_test_size", 18);
-			}
-			if (getProp("log_links") == null) {
-				setIntProp("log_links", 1);
-			}
-			if (getProp("log_utc") == null) {
-				setIntProp("log_utc", 1);
-			}
-			if (getIntProp("log_utc") == 1) {
-				setTimezoneUTC();
-			}
+			if (getProp("loglevel") == null) setIntProp("loglevel", 1);
+			if (getProp("ids") == null) setProp("ids", "");
+			if (getProp("power") == null) setIntProp("power", 6);
+			if (getProp("active") == null) setIntProp("active", -1);
+			if (getProp("splitfile_tolerance") == null) setIntProp("splitfile_tolerance", 66);
+			if (getProp("splitfile_test_size") == null) setIntProp("splitfile_test_size", 18);
+			if (getProp("log_links") == null) setIntProp("log_links", 1);
+			if (getProp("log_utc") == null) setIntProp("log_utc", 1);
+			if (getIntProp("log_utc") == 1) setTimezoneUTC();
 			saveProp();
 
 			// build page and menu
-			adminPage = new AdminPage(this);
-			addPage(adminPage);
-			addMenuItem("Documentation", "Go to the documentation site", "/USK@l9wlbjlCA7kfcqzpBsrGtLoAB4-Ro3vZ6q2p9bQ~5es,bGAKUAFF8UryI04sxBKnIQSJWTSa08BDS-8jmVQdE4o,AQACAAE/keepalive/10", true);
+			addPage(new AdminPage(this));
+			addMenuItem("Documentation", "Go to the documentation site",
+				 "/USK@l9wlbjlCA7kfcqzpBsrGtLoAB4-Ro3vZ6q2p9bQ~5es,bGAKUAFF8UryI04sxBKnIQSJWTSa08BDS-8jmVQdE4o,AQACAAE/keepalive/15", true);
 
 			// start reinserter
-			if (getIntProp("active") != -1) {
-				startReinserter(getIntProp("active"));
-			}
+			int activeProp = getIntProp("active");
+			if (activeProp != -1) startReinserter(activeProp);
 
 		} catch (Exception e) {
 			log("Plugin.runPlugin(): " + e.getMessage(), 0);
@@ -127,14 +110,14 @@ public class Plugin extends PluginBase {
 		try {
 
 			if (getProp("ids") == null || getProp("ids").equals("")) {
-				return new int[]{};
+				return new int[] {};
 			} else {
-				String[] aIds = getProp("ids").split(",");
-				int[] aIntIds = new int[aIds.length];
-				for (int i = 0; i < aIntIds.length; i++) {
-					aIntIds[i] = Integer.parseInt(aIds[i]);
-				}
-				return aIntIds;
+				String[] ids = getProp("ids").split(",");
+				int[] intIds = new int[ids.length];
+				for (int i = 0; i < intIds.length; i++)
+					intIds[i] = Integer.parseInt(ids[i]);
+
+				return intIds;
 			}
 
 		} catch (Exception e) {
@@ -143,36 +126,36 @@ public class Plugin extends PluginBase {
 		}
 	}
 
-	public int[] getSuccessValues(int nSiteId) {
+	public int[] getSuccessValues(int siteId) {
 		try {
 
 			// available blocks
-			int nSuccess = 0;
-			int nFailed = 0;
-			String[] aSuccess = getProp("success_" + nSiteId).split(",");
-			if (aSuccess.length >= 2) {
-				for (int i = 0; i < aSuccess.length; i += 2) {
-					nSuccess += Integer.parseInt(aSuccess[i]);
-					nFailed += Integer.parseInt(aSuccess[i + 1]);
+			int success = 0;
+			int failed = 0;
+			String[] successMap = getProp("success_" + siteId).split(",");
+			if (successMap.length >= 2) {
+				for (int i = 0; i < successMap.length; i += 2) {
+					success += Integer.parseInt(successMap[i]);
+					failed += Integer.parseInt(successMap[i + 1]);
 				}
 			}
 
 			// available segments
-			int nAvailableSegments = 0;
-			String cAvailableSegments = getProp("success_segments_" + nSiteId);
-			int lastTriedSegment = getIntProp("segment_" + nSiteId);
-			if (cAvailableSegments != null) {
-				if (lastTriedSegment >= cAvailableSegments.length()) {
-					log("Plugin.getSuccessValues(): List of success_segments too short for nSiteId " + nSiteId + "! " + cAvailableSegments.length() + " vs " + lastTriedSegment + 1, 0);
-				}
-				for (int i = 0; i <= lastTriedSegment && i < cAvailableSegments.length(); i++) {
-					if (cAvailableSegments.charAt(i) == '1') {
-						nAvailableSegments++;
-					}
+			int availableSegments = 0;
+			String successSegments = getProp("success_segments_" + siteId);
+			int lastTriedSegment = getIntProp("segment_" + siteId);
+			if (successSegments != null) {
+				if (lastTriedSegment >= successSegments.length())
+					log("Plugin.getSuccessValues(): List of success_segments too short for siteId " +
+						 siteId + "! " + successSegments.length() + " vs " + lastTriedSegment + 1, 0);
+
+				for (int i = 0; i <= lastTriedSegment && i < successSegments.length(); i++) {
+					if (successSegments.charAt(i) == '1')
+						availableSegments++;
 				}
 			}
 
-			return new int[]{nSuccess, nFailed, nAvailableSegments};
+			return new int[] {success, failed, availableSegments};
 
 		} catch (Exception e) {
 			log("Plugin.getSuccessValues(): " + e.getMessage(), 0);
@@ -180,19 +163,19 @@ public class Plugin extends PluginBase {
 		}
 	}
 
-	public String getLogFilename(int nSiteId) {
-		return "log" + nSiteId + ".txt";
+	public String getLogFilename(int siteId) {
+		return "log" + siteId + ".txt";
 	}
 
-	public String getBlockListFilename(int nSiteId) {
-		return "keys" + nSiteId + ".txt";
+	public String getBlockListFilename(int siteId) {
+		return "keys" + siteId + ".txt";
 	}
 
 	@Override
 	public void saveProp() {
-		if (nPropSavingTimestamp < System.currentTimeMillis() - 10 * 1000) {
+		if (propSavingTimestamp < System.currentTimeMillis() - 10 * 1000) {
 			super.saveProp();
-			nPropSavingTimestamp = System.currentTimeMillis();
+			propSavingTimestamp = System.currentTimeMillis();
 		}
 	}
 
@@ -207,5 +190,9 @@ public class Plugin extends PluginBase {
 
 	public HighLevelSimpleClientImpl getFreenetClient() {
 		return hlsc;
+	}
+
+	public void setReinserter(Reinserter reinserter) {
+		this.reinserter = reinserter;
 	}
 }

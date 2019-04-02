@@ -35,9 +35,9 @@ public class Block {
 	private String resultLog;
 
 	public Block(FreenetURI uri, int segmentId, int id, boolean isDataBlock) {
-		this.uri = uri;
-		this.segmentId = segmentId;
 		this.id = id;
+		this.segmentId = segmentId;
+		this.uri = uri;
 		dataBlock = isDataBlock;
 	}
 
