@@ -266,64 +266,36 @@ public class AdminPage extends PageBase {
 
 			String uri = uriOrig;
 			int begin = uri.indexOf("@") - 3;
-			if (begin > 0) {
+			if (begin > 0)
 				uri = uri.substring(begin);
-			}
 
-			boolean valid = true;
 			try {
 				uri = new FreenetURI(uri).toString();
-			} catch (MalformedURLException e) {
-				valid = false;
-				addBox("URI not valid!", "You have typed:<br><br>" + uriOrig);
-			}
 
-			// add if not already on the list.
-			if (valid && !isDuplicate(uri)) {
-				int[] aIds = plugin.getIds();
-				int nId;
-				if (aIds.length == 0) {
-					nId = 0;
-				} else {
-					nId = aIds[aIds.length - 1] + 1;
+				// add if not already on the list
+				if (!isDuplicate(uri)) {
+					int[] ids = plugin.getIds();
+
+					int id;
+					if (ids.length == 0)
+						id = 0;
+					else
+						id = ids[ids.length - 1] + 1;
+
+					setProp("ids", getProp("ids") + id + ",");
+					setProp("uri_" + id, uri);
+					setProp("blocks_" + id, "?");
+					setProp("success_" + id, "");
+					setIntProp("segment_" + id, -1);
 				}
-				setProp("ids", getProp("ids") + nId + ",");
-				setProp("uri_" + nId, uri);
-				setProp("blocks_" + nId, "?");
-				setProp("success_" + nId, "");
-				setIntProp("segment_" + nId, -1);
+			} catch (MalformedURLException e) {
+				addBox("URI not valid!", "You have typed:<br><br>" + uriOrig);
 			}
 		}
 	}
 
 	private void removeUri() throws Exception {
-		// stop reinserter
-		int id = getIntParam("remove");
-		if (id == plugin.getIntProp("active"))
-			plugin.stopReinserter();
-
-		// remove log and key files
-		File file = new File(plugin.getPluginDirectory() + plugin.getLogFilename(id));
-		if (file.exists()) {
-			if (!file.delete())
-				log("AdminPage.removeUri(): remove log files was not successful.", 1);
-		}
-		file = new File(plugin.getPluginDirectory() + plugin.getBlockListFilename(id));
-		if (file.exists()) {
-			if (!file.delete())
-				log("AdminPage.removeUri(): remove key files was not successful.", 1);
-		}
-
-		// remove items
-		removeProp("uri_" + id);
-		removeProp("blocks_" + id);
-		removeProp("success_" + id);
-		removeProp("success_segments_" + id);
-		removeProp("segment_" + id);
-		removeProp("history_" + id);
-		String cIds = ("," + getProp("ids")).replaceAll("," + id + ",", ",");
-		setProp("ids", cIds.substring(1));
-		saveProp();
+		plugin.removeUri(getIntParam("remove"));
 	}
 
 	// TODO
@@ -383,17 +355,12 @@ public class AdminPage extends PageBase {
 		}
 	}
 
-	private synchronized boolean isDuplicate(String uri) {
-		try {
-			for (int i : plugin.getIds()) {
-				if (getProp("uri_" + i).equals(uri)) {
-					addBox("Duplicate URI", "We are already keeping this key alive:<br><br>" + uri);
-					return true;
-				}
-			}
-		} catch (Exception e) {
-			log("AdminPage.isDuplicate(): " + Debug.stackTrace(e));
-		}
-		return false;
+	private boolean isDuplicate(String uri) {
+		boolean isDuplicate = plugin.isDuplicate(uri);
+
+		if (isDuplicate)
+			addBox("Duplicate URI", "We are already keeping this key alive:<br><br>" + uri);
+
+		return isDuplicate;
 	}
 }

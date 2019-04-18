@@ -100,7 +100,7 @@ abstract public class PluginBase implements FredPlugin, FredPluginThreadless,
 	}
 
 	@Override
-	public void runPlugin(PluginRespirator pr) {          // FredPlugin
+	public void runPlugin(PluginRespirator pr) { // FredPlugin
 		try {
 
 			log(getVersion() + " started");
@@ -125,7 +125,7 @@ abstract public class PluginBase implements FredPlugin, FredPluginThreadless,
 	}
 
 	@Override
-	public String getVersion() {                         // FredPluginVersioned
+	public String getVersion() { // FredPluginVersioned
 		return strTitle + " " + strVersion;
 	}
 
@@ -135,7 +135,7 @@ abstract public class PluginBase implements FredPlugin, FredPluginThreadless,
 	 * @return This method return phrase in right local
 	 */
 	@Override
-	public String getString(String strKey) {               // FredPluginL10n
+	public String getString(String strKey) { // FredPluginL10n
 		return strKey;
 	}
 
@@ -144,12 +144,12 @@ abstract public class PluginBase implements FredPlugin, FredPluginThreadless,
 	 * @param language
 	 */
 	@Override
-	public void setLanguage(LANGUAGE language) {         // FredPluginL10n
+	public void setLanguage(LANGUAGE language) { // FredPluginL10n
 		nodeLanguage = language;
 	}
 
 	@Override
-	public void terminate() {                            // FredPlugin
+	public void terminate() { // FredPlugin
 		try {
 
 			log("plugin base terminates");
@@ -170,41 +170,41 @@ abstract public class PluginBase implements FredPlugin, FredPluginThreadless,
 	}
 
 	@Override
-	public void messageReceived(Connection connection, Message message) {            // ConnectionListener
+	public void messageReceived(Connection connection, Message message) { // ConnectionListener
 		try {
 
 			// errors
-			if (message.getName().equals("ProtocolError")) {
+			if (message.getName().equals("ProtocolError"))
 				log("ProtocolError: " + message.get("CodeDescription"));
-
-			} else if (message.getName().equals("IdentifierCollision")) {
+			else if (message.getName().equals("IdentifierCollision"))
 				log("IdentifierCollision");
 
-				// redirect deprecated usk edition
-			} else if (message.getName().equals("GetFailed") && (message.get("RedirectUri") != null) &&
-					!message.get("RedirectUri").equals("")) {
+			// redirect deprecated usk edition
+			else if (message.getName().equals("GetFailed") &&
+					(message.get("RedirectUri") != null) && !message.get("RedirectUri").equals("")) {
 				log("USK redirected (" + message.getIdentifier() + ")");
+
 				// reg new edition
-				String cPagename = message.getIdentifier().split("_")[0];
-				PageBase page = (PageBase) mPages.get(cPagename);
-				if (page != null) {
+				String pageName = message.getIdentifier().split("_")[0];
+				PageBase page = (PageBase) mPages.get(pageName);
+				if (page != null)
 					page.updateRedirectUri(message);
-				}
+
 				// redirect
 				FcpCommands fcpCommand = new FcpCommands(fcpConnection, null);
 				fcpCommand.setCommandName("ClientGet");
 				fcpCommand.field("Identifier", message.getIdentifier());
 				fcpCommand.field("URI", message.get("RedirectUri"));
 				fcpCommand.send();
+			}
 
-				// register message
-			} else {
+			// register message
+			else {
 				log("fcp: " + message.getName() + " (" + message.getIdentifier() + ")");
-				String cPagename = message.getIdentifier().split("_")[0];
-				PageBase page = (PageBase) mPages.get(cPagename);
-				if (page != null) {
+				String pageName = message.getIdentifier().split("_")[0];
+				PageBase page = (PageBase) mPages.get(pageName);
+				if (page != null)
 					page.addMessage(message);
-				}
 			}
 
 		} catch (Exception e) {
@@ -213,7 +213,7 @@ abstract public class PluginBase implements FredPlugin, FredPluginThreadless,
 	}
 
 	@Override
-	public void connectionTerminated(Connection connection) {                        // ConnectionListener
+	public void connectionTerminated(Connection connection) { // ConnectionListener
 		log("fcp connection terminated");
 	}
 

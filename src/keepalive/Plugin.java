@@ -21,10 +21,15 @@ package keepalive;
 import freenet.client.HighLevelSimpleClientImpl;
 import freenet.pluginmanager.PluginRespirator;
 import keepalive.service.reinserter.Reinserter;
+import keepalive.util.Debug;
 import keepalive.web.AdminPage;
 import pluginbase.PluginBase;
 
+import java.io.File;
+
 public class Plugin extends PluginBase {
+
+	private static final String version = "0.3.3.7-RW";
 
 	private Reinserter reinserter;
 	private long propSavingTimestamp;
@@ -32,7 +37,7 @@ public class Plugin extends PluginBase {
 
 	public Plugin() {
 		super("KeepAlive", "KeepAlive", "prop.txt");
-		setVersion("0.3.3.7-RW");
+		setVersion(version);
 		addPluginToMenu("KeepAlive", "Reinsert sites and files in the background");
 		clearLog();
 	}
@@ -55,7 +60,7 @@ public class Plugin extends PluginBase {
 				for (int aId : ids)
 					setProp("blocks_" + aId, "?");
 
-				setProp("version", "0.3.3.7-TS");
+				setProp("version", version);
 			}
 
 			// initial values
@@ -194,5 +199,47 @@ public class Plugin extends PluginBase {
 
 	public void setReinserter(Reinserter reinserter) {
 		this.reinserter = reinserter;
+	}
+
+	public synchronized boolean isDuplicate(String uri) {
+		try {
+			for (int i : getIds()) {
+				if (getProp("uri_" + i).equals(uri)) {
+					return true;
+				}
+			}
+		} catch (Exception e) {
+			log("Plugin.isDuplicate(): " + Debug.stackTrace(e), 2);
+		}
+		return false;
+	}
+
+	public void removeUri(int id) throws Exception {
+		// stop reinserter
+		if (id == getIntProp("active"))
+			stopReinserter();
+
+		// remove log and key files
+		File file = new File(getPluginDirectory() + getLogFilename(id));
+		if (file.exists()) {
+			if (!file.delete())
+				log("Plugin.removeUri(): remove log files was not successful.", 1);
+		}
+		file = new File(getPluginDirectory() + getBlockListFilename(id));
+		if (file.exists()) {
+			if (!file.delete())
+				log("Plugin.removeUri(): remove key files was not successful.", 1);
+		}
+
+		// remove items
+		removeProp("uri_" + id);
+		removeProp("blocks_" + id);
+		removeProp("success_" + id);
+		removeProp("success_segments_" + id);
+		removeProp("segment_" + id);
+		removeProp("history_" + id);
+		String ids = ("," + getProp("ids")).replaceAll("," + id + ",", ",");
+		setProp("ids", ids.substring(1));
+		saveProp();
 	}
 }

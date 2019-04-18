@@ -84,6 +84,7 @@ public class Reinserter extends Thread {
 	private int parsedBlockId;
 	private ArrayList<Segment> segments = new ArrayList<>();
 	private int activeSingleJobCount = 0;
+	private long startedAt;
 
 	private RequestClient rc = new RequestClient() {
 
@@ -130,15 +131,25 @@ public class Reinserter extends Thread {
 			String uriProp = plugin.getProp("uri_" + siteId);
 			plugin.log("start reinserter for site " + uriProp + " (" + siteId + ")", 1);
 			plugin.clearLog(plugin.getLogFilename(siteId));
+			startedAt = System.currentTimeMillis();
 
 			// update and register uri
 			FreenetURI uri = new FreenetURI(uriProp);
 			if (uri.isUSK()) {
 				FreenetURI newUri = updateUsk(uri);
 				if (newUri != null && !newUri.equals(uri)) {
-					plugin.setProp("uri_" + siteId, newUri.toString());
-					plugin.setProp("blocks_" + siteId, "?");
-					uri = newUri;
+					String newUriString = newUri.toString();
+					plugin.log("received new uri: " + newUriString, 1);
+					if (plugin.isDuplicate(newUriString)) {
+						plugin.log("remove uri as duplicate: " + newUriString, 1);
+						startReinsertionNextSite();
+						plugin.removeUri(siteId);
+						return;
+					} else {
+						plugin.setProp("uri_" + siteId, newUri.toString());
+						plugin.setProp("blocks_" + siteId, "?");
+						uri = newUri;
+					}
 				}
 			}
 			registerManifestUri(uri, -1);
@@ -503,27 +514,39 @@ public class Reinserter extends Thread {
 				plugin.saveProp();
 			}
 
-			// start reinsertion of next site
 			log("*** reinsertion finished ***", 0, 0);
 			plugin.log("reinsertion finished for " + plugin.getProp("uri_" + siteId), 1);
-			int[] aIds = plugin.getIds();
-			int i = -1;
-			for (int j = 0; j < aIds.length; j++) {
-				i = j;
-				if (siteId == aIds[j]) {
-					break;
-				}
-			}
-			if (!isActive()) {
-				return;
-			}
-			if (i < aIds.length - 1) {
-				plugin.startReinserter(aIds[i + 1]);
-			} else {
-				plugin.startReinserter(aIds[0]);
-			}
+
+			startReinsertionNextSite();
 
 		} catch (Exception e) {
+			plugin.log("Reinserter.run(): " + e.getMessage(), 0);
+		}
+	}
+
+	private synchronized void startReinsertionNextSite() {
+		try
+		{
+			wait(60_000 / (System.currentTimeMillis() - startedAt) + 1); // so as not to burden the processor
+
+			int[] ids = plugin.getIds();
+
+			int i = -1;
+			for (int j = 0; j < ids.length; j++) {
+				i = j;
+				if (siteId == ids[j])
+					break;
+			}
+
+			if (!isActive())
+				return;
+
+			if (i < ids.length - 1)
+				plugin.startReinserter(ids[i + 1]);
+			else
+				plugin.startReinserter(ids[0]);
+		}
+		catch (Exception e) {
 			plugin.log("Reinserter.run(): " + e.getMessage(), 0);
 		}
 	}
