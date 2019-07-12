@@ -53,13 +53,16 @@ public class SingleInsert extends SingleJob {
 				SingleFetch singleFetch = new SingleFetch(reinserter, block, false);
 				singleFetch.start();
 				singleFetch.join();
-				if (!reinserter.isActive()) return;
+				if (!reinserter.isActive()) {
+					return;
+				}
 			}
 
 			Segment segment = reinserter.getSegments().get(block.getSegmentId());
 
-			if (block.getBucket() == null)
+			if (block.getBucket() == null) {
 				block.setResultLog("-> insertion failed: fetch failed");
+			}
 
 			// insert
 			else {
@@ -88,7 +91,9 @@ public class SingleInsert extends SingleJob {
 						 .insert(insertBlock, null, false, prio, insertContext, fetchUri.getCryptoKey());
 
 					// insert finished
-					if (!reinserter.isActive()) return;
+					if (!reinserter.isActive()) {
+						return;
+					}
 
 					if (insertUri != null) {
 						if (fetchUri.equals(insertUri)) {
@@ -108,7 +113,7 @@ public class SingleInsert extends SingleJob {
 
 			// reg success if single-block-segment
 			if (segment.size() == 1) {
-				reinserter.updateSegmentStatistic(segment, block.getInsertSuccessful());
+				reinserter.updateSegmentStatistic(segment, block.isInsertSuccessful());
 			}
 
 			// finish

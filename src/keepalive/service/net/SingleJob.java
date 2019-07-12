@@ -35,7 +35,6 @@ public abstract class SingleJob extends Thread {
 	String compressionAlgorithm;
 
 	private String jobType;
-	private boolean active = true;
 
 	SingleJob(Reinserter reinserter, String jobType, Block block) {
 		this.reinserter = reinserter;
@@ -88,7 +87,7 @@ public abstract class SingleJob extends Thread {
 			if (reinserter.isActive()) {
 				// log
 				String cFirstLog = jobType + ": " + block.getUri();
-				if (!block.getFetchSuccessful() && !block.getInsertSuccessful()) {
+				if (!block.isFetchSuccessful() && !block.isInsertSuccessful()) {
 					cFirstLog = "<b>" + cFirstLog + "</b>";
 					block.setResultLog("<b>" + block.getResultLog() + "</b>");
 				}

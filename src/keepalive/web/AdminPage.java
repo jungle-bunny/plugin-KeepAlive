@@ -19,12 +19,10 @@
 package keepalive.web;
 
 import freenet.keys.FreenetURI;
-import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URLDecoder;
 
 import keepalive.Plugin;
-import keepalive.util.Debug;
 import pluginbase.PageBase;
 
 public class AdminPage extends PageBase {
@@ -112,7 +110,7 @@ public class AdminPage extends PageBase {
 				 html("info", formPassword).replaceAll("#1", plugin.getVersion()));
 
 		} catch (Exception e) {
-			log("AdminPage.handleRequest(): " + Debug.stackTrace(e));
+			log("AdminPage.handleRequest(): " + e.getMessage());
 		}
 	}
 
@@ -120,20 +118,21 @@ public class AdminPage extends PageBase {
 		StringBuilder html = new StringBuilder("<table>");
 		for (int id : ids) {
 			html.append("<tr><td>")
-				 .append(getShortUri(id))
-				 .append("</td><td>");
+					.append(getShortUri(id))
+					.append("</td><td>");
 
-			if (getProp("history_" + id) != null)
+			if (getProp("history_" + id) != null) {
 				html.append(getProp("history_" + id)
-					 .replaceAll("-", "=")
-					 .replaceAll(",", "%, "))
-					 .append("%");
+						.replaceAll("-", "=")
+						.replaceAll(",", "%, "))
+						.append("%");
+			}
 
 			html.append("</td><td><a href=\"?clear_history=")
-				 .append(id)
-				 .append("&formPassword=")
-				 .append(formPassword)
-				 .append("\">clear</a></td></tr>");
+					.append(id)
+					.append("&formPassword=")
+					.append(formPassword)
+					.append("\">clear</a></td></tr>");
 		}
 		html.append("</table>");
 		addBox("Lowest rate of blocks availability (monthly)", html.toString());
@@ -151,35 +150,38 @@ public class AdminPage extends PageBase {
 	private void logBox() throws Exception {
 		if (getParam("master_log") != null || getParam("log") != null) {
 			String cLog;
-			if (getParam("master_log") != null)
+			if (getParam("master_log") != null) {
 				cLog = plugin.getLog();
-			else
+			} else {
 				cLog = plugin.getLog(plugin.getLogFilename(getIntParam("log")));
+			}
 
 
-			if (cLog == null)
+			if (cLog == null) {
 				cLog = "";
+			}
 
 			StringBuilder html = new StringBuilder(
-				 ("<small>" + cLog + "</small>")
-						.replaceAll("\n", "<br>")
-						.replaceAll(" {2}", "&nbsp; &nbsp; "));
+					("<small>" + cLog + "</small>")
+							.replaceAll("\n", "<br>")
+							.replaceAll(" {2}", "&nbsp; &nbsp; "));
 
-			if (getParam("master_log") != null)
+			if (getParam("master_log") != null) {
 				addBox("Master log", html.toString());
-			else
+			} else {
 				addBox("Log for " + getShortUri(getIntParam("log")), html.toString());
+			}
 		}
 	}
 
 	private void sitesBox(int[] ids) throws Exception {
 		StringBuilder html = new StringBuilder(html("add_key", formPassword))
-			 .append("<br><table><tr style=\"text-align:center;\">")
-			 .append("<td>URI</td><td>total<br>blocks</td>")
-			 .append("<td>available<br>blocks</td><td>missed<br>blocks</td>")
-			 .append("<td>blocks<br>availability</td><td>segments<br>availability</td>")
-			 .append("<td colspan='4'>Actions</td>")
-			 .append("</tr>");
+				.append("<br><table><tr style=\"text-align:center;\">")
+				.append("<td>URI</td><td>total<br>blocks</td>")
+				.append("<td>available<br>blocks</td><td>missed<br>blocks</td>")
+				.append("<td>blocks<br>availability</td><td>segments<br>availability</td>")
+				.append("<td colspan='4'>Actions</td>")
+				.append("</tr>");
 
 		for (int id : ids) {
 			String uri = getProp("uri_" + id);
@@ -187,52 +189,55 @@ public class AdminPage extends PageBase {
 			int failure = plugin.getSuccessValues(id)[1];
 
 			int persistence = 0;
-			if (success > 0)
+			if (success > 0) {
 				persistence = (int) ((double) success / (success + failure) * 100);
+			}
 
 			int availableSegments = plugin.getSuccessValues(id)[2];
 			int finishedSegmentsCount = getIntProp("segment_" + id) + 1;
 
 			int segmentsAvailability = 0;
-			if (finishedSegmentsCount > 0)
+			if (finishedSegmentsCount > 0) {
 				segmentsAvailability = (int) ((double) availableSegments / finishedSegmentsCount * 100);
+			}
 
 			html.append("<tr>" + "<td><a href='/")
-				 .append(uri)
-				 .append("'>")
-				 .append(getShortUri(id))
-				 .append("</a></td><td align=\"center\">")
-				 .append(getProp("blocks_" + id))
-				 .append("</td><td align=\"center\">")
-				 .append(success)
-				 .append("</td><td align=\"center\">")
-				 .append(failure)
-				 .append("</td><td align=\"center\">")
-				 .append(persistence)
-				 .append(" %</td><td align=\"center\">")
-				 .append(segmentsAvailability)
-				 .append(" %</td><td><a href='?remove=")
-				 .append(id)
-				 .append("&formPassword=")
-				 .append(formPassword)
-				 .append("'>remove</a></td><td><a href='?log=")
-				 .append(id)
-				 .append("&formPassword=")
-				 .append(formPassword)
-				 .append("'>log</a></td>");
+					.append(uri)
+					.append("'>")
+					.append(getShortUri(id))
+					.append("</a></td><td align=\"center\">")
+					.append(getProp("blocks_" + id))
+					.append("</td><td align=\"center\">")
+					.append(success)
+					.append("</td><td align=\"center\">")
+					.append(failure)
+					.append("</td><td align=\"center\">")
+					.append(persistence)
+					.append(" %</td><td align=\"center\">")
+					.append(segmentsAvailability)
+					.append(" %</td><td><a href='?remove=")
+					.append(id)
+					.append("&formPassword=")
+					.append(formPassword)
+					.append("'>remove</a></td><td><a href='?log=")
+					.append(id)
+					.append("&formPassword=")
+					.append(formPassword)
+					.append("'>log</a></td>");
 
-			if (id == getIntProp("active"))
+			if (id == getIntProp("active")) {
 				html.append("<td><a href='?stop=")
-					 .append(id)
-					 .append("&formPassword=")
-					 .append(formPassword)
-					 .append("'>stop</a></td><td><b>active</b></td>");
-			else
+						.append(id)
+						.append("&formPassword=")
+						.append(formPassword)
+						.append("'>stop</a></td><td><b>active</b></td>");
+			} else {
 				html.append("<td><a href='?start=")
-					 .append(id)
-					 .append("&formPassword=")
-					 .append(formPassword)
-					 .append("'>start</a></td><td></td>");
+						.append(id)
+						.append("&formPassword=")
+						.append(formPassword)
+						.append("'>start</a></td><td></td>");
+			}
 
 			html.append("</tr>");
 		}
@@ -252,22 +257,25 @@ public class AdminPage extends PageBase {
 			}
 		}
 
-		if (zeroBlockSites.length() > 0)
+		if (zeroBlockSites.length() > 0) {
 			addBox("Unsupported keys",
-				 html("unsupported_keys", formPassword).replaceAll("#", zeroBlockSites.toString()));
+					html("unsupported_keys", formPassword).replaceAll("#", zeroBlockSites.toString()));
+		}
 	}
 
 	private void addUris() throws Exception {
 		for (String splitURI : getParam("uris").split("\n")) {
 			// validate
 			String uriOrig = URLDecoder.decode(splitURI, "UTF8").trim();
-			if (uriOrig.equals(""))
+			if (uriOrig.equals("")) {
 				continue;  //ignore blank lines.
+			}
 
 			String uri = uriOrig;
 			int begin = uri.indexOf("@") - 3;
-			if (begin > 0)
+			if (begin > 0) {
 				uri = uri.substring(begin);
+			}
 
 			try {
 				uri = new FreenetURI(uri).toString();
@@ -277,10 +285,11 @@ public class AdminPage extends PageBase {
 					int[] ids = plugin.getIds();
 
 					int id;
-					if (ids.length == 0)
+					if (ids.length == 0) {
 						id = 0;
-					else
+					} else {
 						id = ids[ids.length - 1] + 1;
+					}
 
 					setProp("ids", getProp("ids") + id + ",");
 					setProp("uri_" + id, uri);
@@ -306,8 +315,9 @@ public class AdminPage extends PageBase {
 			String id = "updateUskEdition" + System.currentTimeMillis();
 			fcp.sendClientGet(id, siteUri);
 
-			for (int secs = 0; secs < 300 && getMessage(id, "AllData") == null; secs++)
+			for (int secs = 0; secs < 300 && getMessage(id, "AllData") == null; secs++) {
 				wait(1_000);
+			}
 
 			if (getRedirectURI() != null) {
 				plugin.setProp("uri_" + siteId, getRedirectURI());
@@ -315,7 +325,7 @@ public class AdminPage extends PageBase {
 			}
 
 		} catch (Exception e) {
-			log("AdminPage.updateUskEdition(): " + Debug.stackTrace(e));
+			log("AdminPage.updateUskEdition(): " + e.getMessage());
 		}
 	}
 
@@ -323,13 +333,14 @@ public class AdminPage extends PageBase {
 		try {
 
 			String uri = getProp("uri_" + siteId);
-			if (uri.length() > 80)
+			if (uri.length() > 80) {
 				return uri.substring(0, 20) + "...." + uri.substring(uri.length() - 50);
-			else
+			} else {
 				return uri;
+			}
 
 		} catch (Exception e) {
-			log("AdminPage.getShortUri(): " + Debug.stackTrace(e));
+			log("AdminPage.getShortUri(): " + e.getMessage());
 			return null;
 		}
 	}
@@ -344,22 +355,24 @@ public class AdminPage extends PageBase {
 			} catch (Exception ignored) {
 			}
 
-			if (value != -1 && value < nMinValue)
+			if (value != -1 && value < nMinValue) {
 				value = nMinValue;
+			}
 
 			setIntProp(cPropName, value);
 			saveProp();
 
 		} catch (Exception e) {
-			log("AdminPage.setPropByParam(): " + Debug.stackTrace(e));
+			log("AdminPage.setPropByParam(): " + e.getMessage());
 		}
 	}
 
 	private boolean isDuplicate(String uri) {
 		boolean isDuplicate = plugin.isDuplicate(uri);
 
-		if (isDuplicate)
+		if (isDuplicate) {
 			addBox("Duplicate URI", "We are already keeping this key alive:<br><br>" + uri);
+		}
 
 		return isDuplicate;
 	}

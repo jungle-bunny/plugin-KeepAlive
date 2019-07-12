@@ -21,7 +21,6 @@ package keepalive;
 import freenet.client.HighLevelSimpleClientImpl;
 import freenet.pluginmanager.PluginRespirator;
 import keepalive.service.reinserter.Reinserter;
-import keepalive.util.Debug;
 import keepalive.web.AdminPage;
 import pluginbase.PluginBase;
 
@@ -53,12 +52,14 @@ public class Plugin extends PluginBase {
 				int[] ids = getIds();
 
 				// remove boost params
-				for (int aId : ids)
+				for (int aId : ids) {
 					removeProp("boost_" + aId);
+				}
 
 				// empty all block list
-				for (int aId : ids)
+				for (int aId : ids) {
 					setProp("blocks_" + aId, "?");
+				}
 
 				setProp("version", version);
 			}
@@ -82,7 +83,9 @@ public class Plugin extends PluginBase {
 
 			// start reinserter
 			int activeProp = getIntProp("active");
-			if (activeProp != -1) startReinserter(activeProp);
+			if (activeProp != -1) {
+				startReinserter(activeProp);
+			}
 
 		} catch (Exception e) {
 			log("Plugin.runPlugin(): " + e.getMessage(), 0);
@@ -119,8 +122,9 @@ public class Plugin extends PluginBase {
 			} else {
 				String[] ids = getProp("ids").split(",");
 				int[] intIds = new int[ids.length];
-				for (int i = 0; i < intIds.length; i++)
+				for (int i = 0; i < intIds.length; i++) {
 					intIds[i] = Integer.parseInt(ids[i]);
+				}
 
 				return intIds;
 			}
@@ -150,13 +154,15 @@ public class Plugin extends PluginBase {
 			String successSegments = getProp("success_segments_" + siteId);
 			int lastTriedSegment = getIntProp("segment_" + siteId);
 			if (successSegments != null) {
-				if (lastTriedSegment >= successSegments.length())
+				if (lastTriedSegment >= successSegments.length()) {
 					log("Plugin.getSuccessValues(): List of success_segments too short for siteId " +
-						 siteId + "! " + successSegments.length() + " vs " + lastTriedSegment + 1, 0);
+							siteId + "! " + successSegments.length() + " vs " + lastTriedSegment + 1, 0);
+				}
 
 				for (int i = 0; i <= lastTriedSegment && i < successSegments.length(); i++) {
-					if (successSegments.charAt(i) == '1')
+					if (successSegments.charAt(i) == '1') {
 						availableSegments++;
+					}
 				}
 			}
 
@@ -209,26 +215,29 @@ public class Plugin extends PluginBase {
 				}
 			}
 		} catch (Exception e) {
-			log("Plugin.isDuplicate(): " + Debug.stackTrace(e), 2);
+			log("Plugin.isDuplicate(): " + e.getMessage(), 2);
 		}
 		return false;
 	}
 
 	public void removeUri(int id) throws Exception {
 		// stop reinserter
-		if (id == getIntProp("active"))
+		if (id == getIntProp("active")) {
 			stopReinserter();
+		}
 
 		// remove log and key files
 		File file = new File(getPluginDirectory() + getLogFilename(id));
 		if (file.exists()) {
-			if (!file.delete())
+			if (!file.delete()) {
 				log("Plugin.removeUri(): remove log files was not successful.", 1);
+			}
 		}
 		file = new File(getPluginDirectory() + getBlockListFilename(id));
 		if (file.exists()) {
-			if (!file.delete())
+			if (!file.delete()) {
 				log("Plugin.removeUri(): remove key files was not successful.", 1);
+			}
 		}
 
 		// remove items
