@@ -61,6 +61,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.ZipInputStream;
 
 import keepalive.Plugin;
@@ -82,7 +83,7 @@ public class Reinserter extends Thread {
 	private int parsedSegmentId;
 	private int parsedBlockId;
 	private ArrayList<Segment> segments = new ArrayList<>();
-	private int activeSingleJobCount = 0;
+	private AtomicInteger activeSingleJobCount = new AtomicInteger();
 	private long startedAt;
 
 	private RequestClient rc = new RequestClient() {
@@ -229,7 +230,7 @@ public class Reinserter extends Thread {
 			// start reinsertion
 			int power = plugin.getIntProp("power");
 			boolean doReinsertions = true;
-			while (true) {
+			for (int attempt = 0; attempt < 8; attempt++) { // TODO: move magic number to props/settings
 				if (!isActive()) {
 					return;
 				}
@@ -422,7 +423,7 @@ public class Reinserter extends Thread {
 					segment.initInsert();
 
 					for (int i = 0; i < segment.size(); i++) {
-						while (activeSingleJobCount >= plugin.getIntProp("power")) {
+						while (activeSingleJobCount.get() >= plugin.getIntProp("power")) {
 							synchronized (this) {
 								this.wait(1000);
 							}
@@ -532,10 +533,9 @@ public class Reinserter extends Thread {
 
 			int[] ids = plugin.getIds();
 
-			int i = -1;
-			for (int j = 0; j < ids.length; j++) {
-				i = j;
-				if (siteId == ids[j]) {
+			int i = 0;
+			for (; i < ids.length; i++) {
+				if (siteId == ids[i]) {
 					break;
 				}
 			}
@@ -577,7 +577,7 @@ public class Reinserter extends Thread {
 	}
 
 	private void waitForNextFreeThread(int power) throws InterruptedException {
-		while (activeSingleJobCount >= power) {
+		while (activeSingleJobCount.get() >= power) {
 			synchronized (this) {
 				this.wait(1000);
 			}
@@ -830,11 +830,11 @@ public class Reinserter extends Thread {
 	}
 
 	public void incrementActiveSingleJobCount() {
-		activeSingleJobCount++;
+		activeSingleJobCount.incrementAndGet();
 	}
 
 	public void decrementActiveSingleJobCount() {
-		activeSingleJobCount--;
+		activeSingleJobCount.decrementAndGet();
 	}
 
 	private class FetchBlocksResult {
