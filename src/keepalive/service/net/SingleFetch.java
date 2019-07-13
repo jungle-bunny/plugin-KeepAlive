@@ -81,7 +81,6 @@ public class SingleFetch extends SingleJob {
 			//finish
 			reinserter.registerBlockFetchSuccess(block);
 			block.setFetchDone(true);
-			finish();
 
 		} catch (IOException e) {
 			plugin.log("SingleFetch.run(): " + e.getMessage(), 0);
@@ -89,6 +88,7 @@ public class SingleFetch extends SingleJob {
 			if (fetchResult != null && fetchResult.asBucket() != null) {
 				fetchResult.asBucket().free();
 			}
+			finish();
 		}
 	}
 

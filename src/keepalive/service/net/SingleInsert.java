@@ -118,10 +118,11 @@ public class SingleInsert extends SingleJob {
 
 			// finish
 			block.setInsertDone(true);
-			finish();
 
 		} catch (Exception e) {
 			plugin.log("SingleInsert.run(): " + e.getMessage(), 0);
+		} finally {
+			finish();
 		}
 	}
 }
