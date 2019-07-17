@@ -28,7 +28,7 @@ import java.io.File;
 
 public class Plugin extends PluginBase {
 
-	private static final String version = "0.3.3.8-pre2-RW";
+	private static final String version = "0.3.3.8-pre3-RW";
 
 	private Reinserter reinserter;
 	private long propSavingTimestamp;
