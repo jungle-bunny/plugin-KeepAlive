@@ -82,7 +82,7 @@ public class Reinserter extends Thread {
 	private HashMap<FreenetURI, Block> blocks;
 	private int parsedSegmentId;
 	private int parsedBlockId;
-	private ArrayList<Segment> segments = new ArrayList<>();
+	private List<Segment> segments = new ArrayList<>();
 	private AtomicInteger activeSingleJobCount = new AtomicInteger();
 	private long startedAt;
 
@@ -230,27 +230,28 @@ public class Reinserter extends Thread {
 			// start reinsertion
 			int power = plugin.getIntProp("power");
 			boolean doReinsertions = true;
-			for (int attempt = 0; attempt < 8; attempt++) { // TODO: move magic number to props/settings
+			for (int attempt = 0; attempt < 1; attempt++) { // TODO: move magic number to props/settings
 				if (!isActive()) {
 					return;
 				}
 
+				log("next segment", 1, 1);
 				// next segment
-				int nSegmentSize = 0;
+				List<Block> segmentBlocks = new ArrayList<>();
 				for (Block block : blocks.values()) {
 					if (block.getSegmentId() == segments.size()) {
-						nSegmentSize++;
+						segmentBlocks.add(block);
 					}
 				}
-				if (nSegmentSize == 0) {
+				if (segmentBlocks.isEmpty()) {
 					break; // ready
 				}
-				Segment segment = new Segment(this, segments.size(), nSegmentSize);
-				for (Block block : blocks.values()) {
-					if (block.getSegmentId() == segments.size()) {
-						segment.addBlock(block);
-					}
+				log("new segment", 1, 1);
+				Segment segment = new Segment(this, segments.size(), segmentBlocks.size());
+				for (Block block : segmentBlocks) {
+					segment.addBlock(block);
 				}
+				log("add segment", 1, 1);
 				segments.add(segment);
 				log(segment, "*** segment size: " + segment.size(), 0);
 				doReinsertions = true;
@@ -419,10 +420,11 @@ public class Reinserter extends Thread {
 				// start reinsertion
 				if (doReinsertions) {
 
-					log(segment, "starting reinsertion", 0, 1);
+					log(segment, "starting reinsertion " + segment.size() + "segments", 0, 1);
 					segment.initInsert();
 
 					for (int i = 0; i < segment.size(); i++) {
+						log("segment " + i, 1, 1);
 						while (activeSingleJobCount.get() >= plugin.getIntProp("power")) {
 							synchronized (this) {
 								this.wait(1000);
@@ -431,6 +433,7 @@ public class Reinserter extends Thread {
 								return;
 							}
 						}
+						log("segment " + i + " send", 1, 1);
 						checkFinishedSegments();
 						isActive(true);
 						if (segment.size() > 1) {
@@ -443,13 +446,18 @@ public class Reinserter extends Thread {
 						} else {
 							(new SingleInsert(this, segment.getBlock(i))).start();
 						}
+						log("segment " + i + " finish", 1, 1);
 					}
+
+					log(segment, "finish reinsertion", 0, 1);
 
 				}
 
 				// check if segments are finished
 				checkFinishedSegments();
 			}
+
+			log("wait for finishing top block, if it was fetched", 1, 1);
 
 			// wait for finishing top block, if it was fetched.
 			if (segments.size() > 0 && segments.get(0) != null) {
@@ -463,6 +471,8 @@ public class Reinserter extends Thread {
 					checkFinishedSegments();
 				}
 			}
+
+			log("wait for finishing all segments", 1, 1);
 
 			// wait for finishing all segments
 			if (doReinsertions) {
@@ -479,6 +489,8 @@ public class Reinserter extends Thread {
 				}
 			}
 
+			log("add to history if we've processed the last segment in the file", 1, 1);
+
 			// add to history if we've processed the last segment in the file.
 			if (plugin.getIntProp("blocks_" + siteId) > 0
 				 && plugin.getIntProp("segment_" + siteId) == maxSegmentId) {
@@ -491,6 +503,7 @@ public class Reinserter extends Thread {
 				} else {
 					aHistory = cHistory.split(",");
 				}
+				log("history 1", 1, 1);
 				String cThisMonth = (new SimpleDateFormat("MM.yyyy")).format(new Date());
 				boolean bNewMonth = true;
 				if (cHistory != null && cHistory.contains(cThisMonth)) {
@@ -499,6 +512,7 @@ public class Reinserter extends Thread {
 					nPersistence = Math.min(nPersistence, nOldPersistence);
 					aHistory[aHistory.length - 1] = cThisMonth + "-" + nPersistence;
 				}
+				log("history 2", 1, 1);
 				StringBuilder buf = new StringBuilder();
 				for (String aHistory1 : aHistory) {
 					if (buf.length() > 0) {
@@ -506,6 +520,7 @@ public class Reinserter extends Thread {
 					}
 					buf.append(aHistory1);
 				}
+				log("history 3", 1, 1);
 				if (bNewMonth) {
 					if (cHistory != null && cHistory.length() > 0) {
 						buf.append(",");
@@ -513,8 +528,11 @@ public class Reinserter extends Thread {
 					buf.append(cThisMonth).append("-").append(nPersistence);
 				}
 				cHistory = buf.toString();
+				log("history 4", 1, 1);
 				plugin.setProp("history_" + siteId, cHistory);
+				log("history 5", 1, 1);
 				plugin.saveProp();
+				log("history 6", 1, 1);
 			}
 
 			log("*** reinsertion finished ***", 0, 0);
@@ -637,6 +655,7 @@ public class Reinserter extends Thread {
 	}
 
 	private synchronized void loadBlockUris() {
+		log("loadBlockUris()", 1, 1);
 		try (RandomAccessFile file = new RandomAccessFile(
 				 plugin.getPluginDirectory() + plugin.getBlockListFilename(siteId), "r")) {
 
@@ -1144,6 +1163,7 @@ public class Reinserter extends Thread {
 	}
 
 	private void registerBlockUri(FreenetURI uri, boolean newSegment, boolean isDataBlock, int logTabLevel) {
+		log("registerBlockUri", 1, 1);
 		try {
 
 			if (uri != null) { // uri is null if metadata is created from splitfile
@@ -1321,7 +1341,7 @@ public class Reinserter extends Thread {
 		return siteId;
 	}
 
-	public ArrayList<Segment> getSegments() {
+	public List<Segment> getSegments() {
 		return segments;
 	}
 

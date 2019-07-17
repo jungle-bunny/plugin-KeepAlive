@@ -57,10 +57,15 @@ public class SingleFetch extends SingleJob {
 			// request
 			try {
 
-				if (!persistenceCheck) {
-					fetchResult = plugin.getFreenetClient().fetch(fetchUri);
-				} else {
-					fetchResult = hlscIgnoreStore.fetch(fetchUri);
+				try {
+					if (!persistenceCheck) {
+						fetchResult = plugin.getFreenetClient().fetch(fetchUri);
+					} else {
+						fetchResult = hlscIgnoreStore.fetch(fetchUri);
+					}
+				} catch (Exception e) {
+					reinserter.log("fetch error: " + e.getMessage() + " " + e.getClass(), 1, 1);
+					throw e;
 				}
 
 			} catch (FetchException e) {

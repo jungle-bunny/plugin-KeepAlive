@@ -48,14 +48,19 @@ public class SingleInsert extends SingleJob {
 
 		try {
 
-			// fetch
-			if (block.getBucket() == null) {
-				SingleFetch singleFetch = new SingleFetch(reinserter, block, false);
-				singleFetch.start();
-				singleFetch.join();
-				if (!reinserter.isActive()) {
-					return;
+			try {
+				// fetch
+				if (block.getBucket() == null) {
+					SingleFetch singleFetch = new SingleFetch(reinserter, block, false);
+					singleFetch.start();
+					singleFetch.join();
+					if (!reinserter.isActive()) {
+						return;
+					}
 				}
+			} catch (Exception e) {
+				reinserter.log("insert - fetch failed: " + e.getMessage() + " " + e.getClass(), 1, 1);
+				throw e;
 			}
 
 			Segment segment = reinserter.getSegments().get(block.getSegmentId());
@@ -87,8 +92,14 @@ public class SingleInsert extends SingleJob {
 					// re-insert top blocks and single key files at very high priority, all others at medium prio.
 					short prio = segment.size() == 1 ? (short) 1 : (short) 3;
 
-					FreenetURI insertUri = plugin.getFreenetClient()
-						 .insert(insertBlock, null, false, prio, insertContext, fetchUri.getCryptoKey());
+					FreenetURI insertUri;
+					try {
+						insertUri = plugin.getFreenetClient()
+								.insert(insertBlock, null, false, prio, insertContext, fetchUri.getCryptoKey());
+					} catch (Exception e) {
+						reinserter.log("insert failed: " + e.getMessage() + " " + e.getClass(), 1, 1);
+						throw e;
+					}
 
 					// insert finished
 					if (!reinserter.isActive()) {

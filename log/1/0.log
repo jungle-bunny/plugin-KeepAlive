@@ -1,0 +1,53 @@
+2019.07.16_22.26_30    (50) segment healing (FEC) successful, start with reinsertion
+2019.07.16_22.26_30    (50) starting reinsertion 255segments
+2019.07.16_22.26_30            segment 0
+2019.07.16_22.26_30            segment 0 send
+2019.07.16_22.26_30            segment 0 finish
+2019.07.16_22.26_30            segment 1
+2019.07.16_22.26_30            segment 1 send
+2019.07.16_22.26_30            segment 1 finish
+...
+2019.07.16_22.26_30            segment 247
+2019.07.16_22.26_30            segment 247 send
+2019.07.16_22.26_30    (50) request: CHK@jl7kG5BX4E9OYtqBe2KU82kK4VcUDfV95R6A~uMtFeo,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8 (crypt=3,control=0,compress=-1=none)
+2019.07.16_22.26_30            segment 247 finish
+2019.07.16_22.26_30            segment 248
+2019.07.16_22.26_30    (50) request: CHK@fyRQ7fTDp9Tehmi7l4~bl2vqNVX~poqwP0fnwteLh7M,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8 (crypt=3,control=0,compress=-1=none)
+2019.07.16_22.26_43    (50) insertion: CHK@MoqFlDffJ1d~CCcNb5~8jaPuc3Oi8-XjVw-PsIxxGxM,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.16_22.26_43    (50) -> inserted: CHK@MoqFlDffJ1d~CCcNb5~8jaPuc3Oi8-XjVw-PsIxxGxM,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.16_22.26_43    (50) insertion: CHK@jl7kG5BX4E9OYtqBe2KU82kK4VcUDfV95R6A~uMtFeo,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.16_22.26_43    (50) -> inserted: CHK@jl7kG5BX4E9OYtqBe2KU82kK4VcUDfV95R6A~uMtFeo,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.16_22.26_43            segment 248 send
+2019.07.16_22.26_43            segment 248 finish
+...
+2019.07.16_22.26_43            segment 253 send
+2019.07.16_22.26_43            segment 253 finish
+2019.07.16_22.26_43            segment 254
+2019.07.16_22.26_43            segment 254 send
+2019.07.16_22.26_43            segment 254 finish
+2019.07.16_22.26_43    (50) finish reinsertion
+2019.07.16_22.26_43            wait for finishing top block, if it was fetched
+2019.07.16_22.26_43            wait for finishing all segments
+2019.07.16_22.26_43    (50) request: CHK@GRDmzYSlCqFq7kI2n4Nx7V~UlSQhL-A7UVCOCYWxmT8,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8 (crypt=3,control=0,compress=-1=none)
+2019.07.16_22.26_44    (50) insertion: CHK@Pu3ODWRQpaQDH9tiqy91mrI3j~MvHa~jlJit5fKkZR0,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.16_22.26_44    (50) -> inserted: CHK@Pu3ODWRQpaQDH9tiqy91mrI3j~MvHa~jlJit5fKkZR0,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.16_22.26_44    (50) insertion: CHK@8tFpS5wKTgn06b6UEoHmjAdRiiHyoIaClFt4Bv43-js,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.16_22.26_44    (50) -> inserted: CHK@8tFpS5wKTgn06b6UEoHmjAdRiiHyoIaClFt4Bv43-js,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.16_22.26_44    (50) insertion: CHK@UiAwUzyv7tCaBMAYLuITEvc9J4-apxwJ26xz4nadzfc,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.16_22.26_44    (50) -> inserted: CHK@UiAwUzyv7tCaBMAYLuITEvc9J4-apxwJ26xz4nadzfc,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.16_22.26_48    (50) insertion: CHK@UmarDtY0wt42KdY8vPpUul7YHSoS6e2dVSDtP5rK000,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.16_22.26_48    (50) -> inserted: CHK@UmarDtY0wt42KdY8vPpUul7YHSoS6e2dVSDtP5rK000,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.16_22.26_50    (50) insertion: CHK@j4PZFXwTpWRVm21yIiJZaE0qpJRvacIO~aJL5JaFV-A,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.16_22.26_50    (50) -> inserted: CHK@j4PZFXwTpWRVm21yIiJZaE0qpJRvacIO~aJL5JaFV-A,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.16_22.26_58    (50) insertion: CHK@eTeV80Y4iliuY~cnqAI-1GI0d95x4qGHWkNtrkZMUak,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.16_22.26_58    (50) -> inserted: CHK@eTeV80Y4iliuY~cnqAI-1GI0d95x4qGHWkNtrkZMUak,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.16_22.27_02    (50) insertion: CHK@GRDmzYSlCqFq7kI2n4Nx7V~UlSQhL-A7UVCOCYWxmT8,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.16_22.27_02    (50) -> inserted: CHK@GRDmzYSlCqFq7kI2n4Nx7V~UlSQhL-A7UVCOCYWxmT8,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.16_22.27_11    (50) insertion: CHK@uz2VbXcIP~8Z8x4ECFSCAzgxeHCUM0VUv75VG1wUzJo,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.16_22.27_11    (50) -> inserted: CHK@uz2VbXcIP~8Z8x4ECFSCAzgxeHCUM0VUv75VG1wUzJo,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.16_22.27_21    (50) insertion: CHK@fyRQ7fTDp9Tehmi7l4~bl2vqNVX~poqwP0fnwteLh7M,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.16_22.27_21    (50) -> inserted: CHK@fyRQ7fTDp9Tehmi7l4~bl2vqNVX~poqwP0fnwteLh7M,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.16_22.27_22    (50) insertion: CHK@VzfBYB9dQBlCC9yASlZ9YCIynfGn~lKJC1EDo6UOwUc,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.16_22.27_22    (50) -> inserted: CHK@VzfBYB9dQBlCC9yASlZ9YCIynfGn~lKJC1EDo6UOwUc,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.16_22.27_26    (50) insertion: CHK@XqDhUH6oRWaqUOz8EYsLwXTThGEZwtcs6m69IIySkaw,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.16_22.27_26    (50) -> inserted: CHK@XqDhUH6oRWaqUOz8EYsLwXTThGEZwtcs6m69IIySkaw,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8

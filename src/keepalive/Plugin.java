@@ -28,7 +28,7 @@ import java.io.File;
 
 public class Plugin extends PluginBase {
 
-	private static final String version = "0.3.3.8-pre2-RW";
+	private static final String version = "0.3.3.8-pre3-RW";
 
 	private Reinserter reinserter;
 	private long propSavingTimestamp;
@@ -52,13 +52,13 @@ public class Plugin extends PluginBase {
 				int[] ids = getIds();
 
 				// remove boost params
-				for (int aId : ids) {
-					removeProp("boost_" + aId);
+				for (int id : ids) {
+					removeProp("boost_" + id);
 				}
 
 				// empty all block list
-				for (int aId : ids) {
-					setProp("blocks_" + aId, "?");
+				for (int id : ids) {
+					setProp("blocks_" + id, "?");
 				}
 
 				setProp("version", version);
@@ -92,10 +92,10 @@ public class Plugin extends PluginBase {
 		}
 	}
 
-	public void startReinserter(int nSiteId) {
+	public void startReinserter(int siteId) {
 		try {
 
-			(new Reinserter(this, nSiteId)).start();
+			(new Reinserter(this, siteId)).start();
 
 		} catch (Exception e) {
 			log("Plugin.startReinserter(): " + e.getMessage(), 0);
