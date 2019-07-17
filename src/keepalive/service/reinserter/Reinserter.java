@@ -476,7 +476,12 @@ public class Reinserter extends Thread {
 
 			// wait for finishing all segments
 			if (doReinsertions) {
+				int counter = 0;
 				while (plugin.getIntProp("segment_" + siteId) != maxSegmentId) {
+					if (++counter % 1000 == 0) {
+						log("wait for finishing all segments loop " + counter, 1, 1);
+					}
+
 					synchronized (this) {
 						this.wait(1000);
 					}
@@ -610,8 +615,15 @@ public class Reinserter extends Thread {
 	private void checkFinishedSegments() {
 		try {
 
+			int counter = 0;
 			int segment;
 			while ((segment = plugin.getIntProp("segment_" + siteId)) < segments.size() - 1) {
+				if (++counter % 1000 == 0) {
+					log("checkFinishedSegments loop " + counter, 1, 1);
+					log("plugin.getIntProp(segment_" + siteId + "): " + segment + "; segments.size: " + segments.size(), 1, 1);
+					log("segments.get(" + (segment + 1) + ").isFinished(): " + segments.get(segment + 1).isFinished(), 1, 1);
+				}
+
 				if (segments.get(segment + 1).isFinished()) {
 					plugin.setIntProp("segment_" + siteId, segment + 1);
 				} else {

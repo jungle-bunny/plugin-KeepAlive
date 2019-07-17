@@ -1,0 +1,30 @@
+2019.07.17_14.04_14            segment 254
+2019.07.17_14.04_14            segment 254 send
+2019.07.17_14.04_14            segment 254 finish
+2019.07.17_14.04_14    (51) finish reinsertion
+2019.07.17_14.04_14            wait for finishing top block, if it was fetched
+2019.07.17_14.04_14            wait for finishing all segments
+2019.07.17_14.04_16    (51) insertion: CHK@~GSUf1Rfj-FkRR3N4lyjaHVihG0CkZdNGtDThV5rXTk,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.17_14.04_16    (51) -> inserted: CHK@~GSUf1Rfj-FkRR3N4lyjaHVihG0CkZdNGtDThV5rXTk,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.17_14.04_17    (51) insertion: CHK@ULDcJYWn4IiVo7jfnO5lyZB9L4yBtMxF5ENtnAbfJwM,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.17_14.04_17    (51) -> inserted: CHK@ULDcJYWn4IiVo7jfnO5lyZB9L4yBtMxF5ENtnAbfJwM,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.17_14.04_18    (51) insertion: CHK@CnKVActTSCNKdgfoJel05Du~lswKMsU6eYCi5zxxwQg,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.17_14.04_18    (51) -> inserted: CHK@CnKVActTSCNKdgfoJel05Du~lswKMsU6eYCi5zxxwQg,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.17_14.04_19    (51) insertion: CHK@F~shC-jOgxI68f4MJN3wqDirK~1WbDC3sTcc9I1llNY,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.17_14.04_19    (51) -> inserted: CHK@F~shC-jOgxI68f4MJN3wqDirK~1WbDC3sTcc9I1llNY,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.17_14.04_22    (51) insertion: CHK@pDHjKNPbWA5Ct-AfY91-AtNuKNG2~w-OR4K~0CF-Z1k,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.17_14.04_22    (51) -> inserted: CHK@pDHjKNPbWA5Ct-AfY91-AtNuKNG2~w-OR4K~0CF-Z1k,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.17_14.04_25    (51) insertion: CHK@rOPvVhqt2LkM2ol-iILBwD3oB-UyButFWDWppO78-50,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.17_14.04_25    (51) -> inserted: CHK@rOPvVhqt2LkM2ol-iILBwD3oB-UyButFWDWppO78-50,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.17_14.04_33    (51) insertion: CHK@rT5D8RPY4-mj11s4I9BEyA-o~TOvfARgkYiieH5WNG8,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.17_14.04_33    (51) -> inserted: CHK@rT5D8RPY4-mj11s4I9BEyA-o~TOvfARgkYiieH5WNG8,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.17_14.04_36    (51) insertion: CHK@275qu~jJEknjpC60Bf7UtSqMsU6h3PyCgjv2YqZTxJE,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.17_14.04_36    (51) -> inserted: CHK@275qu~jJEknjpC60Bf7UtSqMsU6h3PyCgjv2YqZTxJE,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.17_14.04_45    (51) insertion: CHK@3GRf2AbXdh4017vqnUoZeshchOOoSgcnfIO9ttY~uEg,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.17_14.04_45    (51) -> inserted: CHK@3GRf2AbXdh4017vqnUoZeshchOOoSgcnfIO9ttY~uEg,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.17_14.04_50    (51) insertion: CHK@I9Gz7kMU-aHjgUtXjiJxOAX7QpcYc3lSBE2cnuaG-No,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.17_14.04_50    (51) -> inserted: CHK@I9Gz7kMU-aHjgUtXjiJxOAX7QpcYc3lSBE2cnuaG-No,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.17_14.05_13    (51) insertion: CHK@0I5g91oreVNdmr8Zw9jrux6UfGDXPFirf4TB~jMZPME,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.17_14.05_13    (51) -> inserted: CHK@0I5g91oreVNdmr8Zw9jrux6UfGDXPFirf4TB~jMZPME,r0Tua65KjYAIc37ZO8OEx3xrNejTlKsXuc1gYQSTgqI,AAMA--8
+2019.07.17_14.20_54            wait for finishing all segments loop 1000
+2019.07.17_14.37_35            wait for finishing all segments loop 2000
