@@ -166,7 +166,9 @@ public class Reinserter extends Thread {
 				parsedSegmentId = -1;
 				parsedBlockId = -1;
 				while (manifestURIs.size() > 0) {
-					if (!isActive()) return;
+					if (!isActive()) {
+						return;
+					}
 
 					uri = (FreenetURI) manifestURIs.keySet().toArray()[0];
 					log(uri.toString(), 0);
@@ -175,7 +177,9 @@ public class Reinserter extends Thread {
 
 				}
 
-				if (!isActive()) return;
+				if (!isActive()) {
+					return;
+				}
 
 				saveBlockUris();
 				plugin.setIntProp("blocks_" + siteId, blocks.size());
@@ -472,7 +476,10 @@ public class Reinserter extends Thread {
 					}
 
 					if (!isActive()) {
-						return;
+						// TODO: this is a bypass
+						plugin.log("Start reinsertion next site after inactive state", 0);
+						isActive(true);
+						break;
 					}
 
 					checkFinishedSegments();
@@ -1256,8 +1263,8 @@ public class Reinserter extends Thread {
 			return true;
 		}
 		if (lastActivityTime != Integer.MIN_VALUE) {
-			long nDelay = (System.currentTimeMillis() - lastActivityTime) / 60 / 1000;
-			return (nDelay < SingleJob.MAX_LIFETIME + 5);
+			long delay = (System.currentTimeMillis() - lastActivityTime) / 60_000; // delay in minutes
+			return (delay < SingleJob.MAX_LIFETIME + 1);
 		}
 		return false;
 	}
