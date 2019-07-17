@@ -478,8 +478,9 @@ public class Reinserter extends Thread {
 			if (doReinsertions) {
 				int counter = 0;
 				while (plugin.getIntProp("segment_" + siteId) != maxSegmentId) {
-					if (++counter % 1000 == 0) {
+					if (++counter % 100 == 0) {
 						log("wait for finishing all segments loop " + counter, 1, 1);
+						log("plugin.getIntProp(segment_" + siteId + "): " + plugin.getIntProp("segment_" + siteId) + "; maxSegmentId: " + maxSegmentId, 1, 1);
 					}
 
 					synchronized (this) {

@@ -1,0 +1,68 @@
+2019.07.17_15.13_54            segment 230 finish
+2019.07.17_15.13_54    (3) finish reinsertion
+2019.07.17_15.13_54            wait for finishing top block, if it was fetched
+2019.07.17_15.13_54            wait for finishing all segments
+2019.07.17_15.13_54    (3) request: CHK@ijPA3AIGKXK~XBsaPtsYaenGHHGEAkxj0UiAsPQRzVY,T83LuByrAjD3YDYN8phaaix6FJ6rlCSYTmUex~KfO4s,AAMA--8 (crypt=3,control=0,compress=-1=none)
+2019.07.17_15.14_06    (3) insertion: CHK@GxciBNTmNVydmh77f~DYsYpfGT39cDCmum65okR8yvM,T83LuByrAjD3YDYN8phaaix6FJ6rlCSYTmUex~KfO4s,AAMA--8
+2019.07.17_15.14_06    (3) -> inserted: CHK@GxciBNTmNVydmh77f~DYsYpfGT39cDCmum65okR8yvM,T83LuByrAjD3YDYN8phaaix6FJ6rlCSYTmUex~KfO4s,AAMA--8
+2019.07.17_15.14_11    (3) insertion: CHK@J3rOVh46NO2syTDNpN4BQNSGSCVIOfYyCo5eiLDQJPU,T83LuByrAjD3YDYN8phaaix6FJ6rlCSYTmUex~KfO4s,AAMA--8
+2019.07.17_15.14_11    (3) -> inserted: CHK@J3rOVh46NO2syTDNpN4BQNSGSCVIOfYyCo5eiLDQJPU,T83LuByrAjD3YDYN8phaaix6FJ6rlCSYTmUex~KfO4s,AAMA--8
+2019.07.17_15.14_13    (3) insertion: CHK@fj9CttHy3AKF9bvNXKV0Nec~eIgmzRtb22m7FpkIAEs,T83LuByrAjD3YDYN8phaaix6FJ6rlCSYTmUex~KfO4s,AAMA--8
+2019.07.17_15.14_13    (3) -> inserted: CHK@fj9CttHy3AKF9bvNXKV0Nec~eIgmzRtb22m7FpkIAEs,T83LuByrAjD3YDYN8phaaix6FJ6rlCSYTmUex~KfO4s,AAMA--8
+2019.07.17_15.14_13    (3) insertion: CHK@2jtkinZvG4vCmpU3CfqPZMyrlIwM1bbuzfhqj2DMe8g,T83LuByrAjD3YDYN8phaaix6FJ6rlCSYTmUex~KfO4s,AAMA--8
+2019.07.17_15.14_13    (3) -> inserted: CHK@2jtkinZvG4vCmpU3CfqPZMyrlIwM1bbuzfhqj2DMe8g,T83LuByrAjD3YDYN8phaaix6FJ6rlCSYTmUex~KfO4s,AAMA--8
+2019.07.17_15.14_14    (3) insertion: CHK@rWJg4YjVcm467Kxs2KZ~qzuQBO9KdtdGorRGVzn0PO4,T83LuByrAjD3YDYN8phaaix6FJ6rlCSYTmUex~KfO4s,AAMA--8
+2019.07.17_15.14_14    (3) -> inserted: CHK@rWJg4YjVcm467Kxs2KZ~qzuQBO9KdtdGorRGVzn0PO4,T83LuByrAjD3YDYN8phaaix6FJ6rlCSYTmUex~KfO4s,AAMA--8
+2019.07.17_15.14_16    (3) insertion: CHK@5VI0sDViaBkk11Y8l~jarNI7M7vz8V3mxG-2rOpiBKg,T83LuByrAjD3YDYN8phaaix6FJ6rlCSYTmUex~KfO4s,AAMA--8
+2019.07.17_15.14_16    (3) -> inserted: CHK@5VI0sDViaBkk11Y8l~jarNI7M7vz8V3mxG-2rOpiBKg,T83LuByrAjD3YDYN8phaaix6FJ6rlCSYTmUex~KfO4s,AAMA--8
+2019.07.17_15.14_33    (3) insertion: CHK@e~qw3VYT05TPNH-E2ZSPHYn2kSkupJ8smL9CREH3XyI,T83LuByrAjD3YDYN8phaaix6FJ6rlCSYTmUex~KfO4s,AAMA--8
+2019.07.17_15.14_33    (3) -> inserted: CHK@e~qw3VYT05TPNH-E2ZSPHYn2kSkupJ8smL9CREH3XyI,T83LuByrAjD3YDYN8phaaix6FJ6rlCSYTmUex~KfO4s,AAMA--8
+2019.07.17_15.14_38    (3) insertion: CHK@L998hFOty-mfchzEAONoW0ewrMNRZ7xENeuUb4Ktq38,T83LuByrAjD3YDYN8phaaix6FJ6rlCSYTmUex~KfO4s,AAMA--8
+2019.07.17_15.14_38    (3) -> inserted: CHK@L998hFOty-mfchzEAONoW0ewrMNRZ7xENeuUb4Ktq38,T83LuByrAjD3YDYN8phaaix6FJ6rlCSYTmUex~KfO4s,AAMA--8
+2019.07.17_15.14_59    (3) insertion: CHK@TLcZztjd~C4kYfmHFuypv8izxMJCD66UvJXwWiiARig,T83LuByrAjD3YDYN8phaaix6FJ6rlCSYTmUex~KfO4s,AAMA--8
+2019.07.17_15.14_59    (3) -> inserted: CHK@TLcZztjd~C4kYfmHFuypv8izxMJCD66UvJXwWiiARig,T83LuByrAjD3YDYN8phaaix6FJ6rlCSYTmUex~KfO4s,AAMA--8
+2019.07.17_15.15_33            wait for finishing all segments loop 100
+2019.07.17_15.15_33            plugin.getIntProp(segment_1): 2; maxSegmentId: 9
+2019.07.17_15.16_40    (3) insertion: CHK@ijPA3AIGKXK~XBsaPtsYaenGHHGEAkxj0UiAsPQRzVY,T83LuByrAjD3YDYN8phaaix6FJ6rlCSYTmUex~KfO4s,AAMA--8
+2019.07.17_15.16_40    (3) -> inserted: CHK@ijPA3AIGKXK~XBsaPtsYaenGHHGEAkxj0UiAsPQRzVY,T83LuByrAjD3YDYN8phaaix6FJ6rlCSYTmUex~KfO4s,AAMA--8
+2019.07.17_15.17_13            wait for finishing all segments loop 200
+2019.07.17_15.17_13            plugin.getIntProp(segment_1): 2; maxSegmentId: 9
+2019.07.17_15.17_59    (3) insertion: CHK@vx7nGeYJc7a8Flfio-Fblii35-e3PcuB0jtrA34gsp4,T83LuByrAjD3YDYN8phaaix6FJ6rlCSYTmUex~KfO4s,AAMA--8
+2019.07.17_15.17_59    (3) -> inserted: CHK@vx7nGeYJc7a8Flfio-Fblii35-e3PcuB0jtrA34gsp4,T83LuByrAjD3YDYN8phaaix6FJ6rlCSYTmUex~KfO4s,AAMA--8
+2019.07.17_15.18_53            wait for finishing all segments loop 300
+2019.07.17_15.18_53            plugin.getIntProp(segment_1): 3; maxSegmentId: 9
+2019.07.17_15.20_33            wait for finishing all segments loop 400
+2019.07.17_15.20_33            plugin.getIntProp(segment_1): 3; maxSegmentId: 9
+2019.07.17_15.22_13            wait for finishing all segments loop 500
+2019.07.17_15.22_13            plugin.getIntProp(segment_1): 3; maxSegmentId: 9
+2019.07.17_15.23_54            wait for finishing all segments loop 600
+2019.07.17_15.23_54            plugin.getIntProp(segment_1): 3; maxSegmentId: 9
+2019.07.17_15.25_34            wait for finishing all segments loop 700
+2019.07.17_15.25_34            plugin.getIntProp(segment_1): 3; maxSegmentId: 9
+2019.07.17_15.27_14            wait for finishing all segments loop 800
+2019.07.17_15.27_14            plugin.getIntProp(segment_1): 3; maxSegmentId: 9
+2019.07.17_15.28_54            wait for finishing all segments loop 900
+2019.07.17_15.28_54            plugin.getIntProp(segment_1): 3; maxSegmentId: 9
+2019.07.17_15.30_34            wait for finishing all segments loop 1000
+2019.07.17_15.30_34            plugin.getIntProp(segment_1): 3; maxSegmentId: 9
+2019.07.17_15.32_14            wait for finishing all segments loop 1100
+2019.07.17_15.32_14            plugin.getIntProp(segment_1): 3; maxSegmentId: 9
+2019.07.17_15.33_54            wait for finishing all segments loop 1200
+2019.07.17_15.33_54            plugin.getIntProp(segment_1): 3; maxSegmentId: 9
+2019.07.17_15.35_34            wait for finishing all segments loop 1300
+2019.07.17_15.35_34            plugin.getIntProp(segment_1): 3; maxSegmentId: 9
+2019.07.17_15.37_14            wait for finishing all segments loop 1400
+2019.07.17_15.37_14            plugin.getIntProp(segment_1): 3; maxSegmentId: 9
+2019.07.17_15.38_54            wait for finishing all segments loop 1500
+2019.07.17_15.38_54            plugin.getIntProp(segment_1): 3; maxSegmentId: 9
+2019.07.17_15.40_34            wait for finishing all segments loop 1600
+2019.07.17_15.40_34            plugin.getIntProp(segment_1): 3; maxSegmentId: 9
+2019.07.17_15.42_14            wait for finishing all segments loop 1700
+2019.07.17_15.42_14            plugin.getIntProp(segment_1): 3; maxSegmentId: 9
+2019.07.17_15.43_54            wait for finishing all segments loop 1800
+2019.07.17_15.43_54            plugin.getIntProp(segment_1): 3; maxSegmentId: 9
+2019.07.17_15.45_34            wait for finishing all segments loop 1900
+2019.07.17_15.45_34            plugin.getIntProp(segment_1): 3; maxSegmentId: 9
+2019.07.17_15.47_14            wait for finishing all segments loop 2000
+2019.07.17_15.47_14            plugin.getIntProp(segment_1): 3; maxSegmentId: 9
+and stuck
