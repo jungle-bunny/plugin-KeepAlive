@@ -28,101 +28,101 @@ import keepalive.model.Segment;
 
 public class SingleInsert extends SingleJob {
 
-	public SingleInsert(Reinserter reinserter, Block block) {
-		super(reinserter, "insertion", block);
-		this.setName("KeepAlive SingleInsert");
-	}
+    public SingleInsert(Reinserter reinserter, Block block) {
+        super(reinserter, "insertion", block);
+        this.setName("KeepAlive SingleInsert");
+    }
 
-	@Override
-	public String toString() {
-		return "KeepAlive - SingleInsert";
-	}
+    @Override
+    public String toString() {
+        return "KeepAlive - SingleInsert";
+    }
 
-	@Override
-	public void run() {
-		super.run();
+    @Override
+    public void run() {
+        super.run();
 
-		FreenetURI fetchUri = getUri();
-		block.setInsertDone(false);
-		block.setInsertSuccessful(false);
+        FreenetURI fetchUri = getUri();
+        block.setInsertDone(false);
+        block.setInsertSuccessful(false);
 
-		try {
+        try {
 
-			// fetch
-			if (block.getBucket() == null) {
-				SingleFetch singleFetch = new SingleFetch(reinserter, block, false);
-				singleFetch.start();
-				singleFetch.join();
-				if (!reinserter.isActive()) {
-					return;
-				}
-			}
+            // fetch
+            if (block.getBucket() == null) {
+                SingleFetch singleFetch = new SingleFetch(reinserter, block, false);
+                singleFetch.start();
+                singleFetch.join();
+                if (!reinserter.isActive()) {
+                    return;
+                }
+            }
 
-			Segment segment = reinserter.getSegments().get(block.getSegmentId());
+            Segment segment = reinserter.getSegments().get(block.getSegmentId());
 
-			if (block.getBucket() == null) {
-				block.setResultLog("-> insertion failed: fetch failed");
-			}
+            if (block.getBucket() == null) {
+                block.setResultLog("-> insertion failed: fetch failed");
+            }
 
-			// insert
-			else {
-				try {
+            // insert
+            else {
+                try {
 
-					InsertBlock insertBlock = new InsertBlock(block.getBucket(), null, fetchUri);
-					InsertContext insertContext = plugin.getFreenetClient().getInsertContext(true);
+                    InsertBlock insertBlock = new InsertBlock(block.getBucket(), null, fetchUri);
+                    InsertContext insertContext = plugin.getFreenetClient().getInsertContext(true);
 
-					if (compressionAlgorithm != null && !compressionAlgorithm.equals("none")) {
-						insertContext.compressorDescriptor = compressionAlgorithm;
-					}
+                    if (compressionAlgorithm != null && !compressionAlgorithm.equals("none")) {
+                        insertContext.compressorDescriptor = compressionAlgorithm;
+                    }
 
-					// switch to crypto_algorithm 2 (instead of using the new one that is introduced since 1416)
-					if (uriExtra[1] == 2) {
-						insertContext.setCompatibilityMode(InsertContext.CompatibilityMode.COMPAT_1255);
-					}
+                    // switch to crypto_algorithm 2 (instead of using the new one that is introduced since 1416)
+                    if (uriExtra[1] == 2) {
+                        insertContext.setCompatibilityMode(InsertContext.CompatibilityMode.COMPAT_1255);
+                    }
 
-					// don't triple-insert blocks.
-					insertContext.extraInsertsSingleBlock = 0;
-					insertContext.earlyEncode = false;
+                    // don't triple-insert blocks.
+                    insertContext.extraInsertsSingleBlock = 0;
+                    insertContext.earlyEncode = false;
 
-					// re-insert top blocks and single key files at very high priority, all others at medium prio.
-					short prio = segment.size() == 1 ? (short) 1 : (short) 3;
+                    // re-insert top blocks and single key files at very high priority, all others at medium prio.
+                    short prio = segment.size() == 1 ? (short) 1 : (short) 3;
 
-					FreenetURI insertUri = plugin.getFreenetClient()
-						 .insert(insertBlock, null, false, prio, insertContext, fetchUri.getCryptoKey());
+                    FreenetURI insertUri = plugin.getFreenetClient()
+                            .insert(insertBlock, null, false, prio, insertContext, fetchUri.getCryptoKey());
 
-					// insert finished
-					if (!reinserter.isActive()) {
-						return;
-					}
+                    // insert finished
+                    if (!reinserter.isActive()) {
+                        return;
+                    }
 
-					if (insertUri != null) {
-						if (fetchUri.equals(insertUri)) {
-							block.setInsertSuccessful(true);
-							block.setResultLog("-> inserted: " + insertUri.toString());
-						} else {
-							block.setResultLog("-> insertion failed - different uri: " + insertUri.toString());
-						}
-					} else {
-						block.setResultLog("-> insertion failed");
-					}
+                    if (insertUri != null) {
+                        if (fetchUri.equals(insertUri)) {
+                            block.setInsertSuccessful(true);
+                            block.setResultLog("-> inserted: " + insertUri.toString());
+                        } else {
+                            block.setResultLog("-> insertion failed - different uri: " + insertUri.toString());
+                        }
+                    } else {
+                        block.setResultLog("-> insertion failed");
+                    }
 
-				} catch (InsertException e) {
-					block.setResultLog("-> insertion error: " + e.getMessage());
-				}
-			}
+                } catch (InsertException e) {
+                    block.setResultLog("-> insertion error: " + e.getMessage());
+                }
+            }
 
-			// reg success if single-block-segment
-			if (segment.size() == 1) {
-				reinserter.updateSegmentStatistic(segment, block.isInsertSuccessful());
-			}
+            // reg success if single-block-segment
+            if (segment.size() == 1) {
+                reinserter.updateSegmentStatistic(segment, block.isInsertSuccessful());
+            }
 
-			// finish
-			block.setInsertDone(true);
+            // finish
+            block.setInsertDone(true);
 
-		} catch (Exception e) {
-			plugin.log("SingleInsert.run(): " + e.getMessage(), 0);
-		} finally {
-			finish();
-		}
-	}
+        } catch (Exception e) {
+            plugin.log("SingleInsert.run(): " + e.getMessage(), 0);
+        } finally {
+            finish();
+        }
+    }
 }

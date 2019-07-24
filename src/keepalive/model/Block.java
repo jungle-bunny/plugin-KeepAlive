@@ -23,89 +23,89 @@ import freenet.support.io.ArrayBucket;
 
 public class Block {
 
-	private int id;
-	private int segmentId;
-	private FreenetURI uri;
-	private ArrayBucket bucket;
-	private boolean dataBlock;
-	private boolean fetchDone; // done but not necessarily successful
-	private boolean fetchSuccessful;
-	private boolean insertDone; // done but not necessarily successful
-	private boolean insertSuccessful;
-	private String resultLog;
+    private int id;
+    private int segmentId;
+    private FreenetURI uri;
+    private ArrayBucket bucket;
+    private boolean dataBlock;
+    private boolean fetchDone; // done but not necessarily successful
+    private boolean fetchSuccessful;
+    private boolean insertDone; // done but not necessarily successful
+    private boolean insertSuccessful;
+    private String resultLog;
 
-	public Block(FreenetURI uri, int segmentId, int id, boolean isDataBlock) {
-		this.id = id;
-		this.segmentId = segmentId;
-		this.uri = uri;
-		dataBlock = isDataBlock;
-	}
+    public Block(FreenetURI uri, int segmentId, int id, boolean isDataBlock) {
+        this.id = id;
+        this.segmentId = segmentId;
+        this.uri = uri;
+        dataBlock = isDataBlock;
+    }
 
-	public int getId() {
-		return id;
-	}
+    public int getId() {
+        return id;
+    }
 
-	public int getSegmentId() {
-		return segmentId;
-	}
+    public int getSegmentId() {
+        return segmentId;
+    }
 
-	public FreenetURI getUri() {
-		return uri;
-	}
+    public FreenetURI getUri() {
+        return uri;
+    }
 
-	public ArrayBucket getBucket() {
-		return bucket;
-	}
+    public ArrayBucket getBucket() {
+        return bucket;
+    }
 
-	public void setBucket(ArrayBucket bucket) {
-		this.bucket = bucket;
-	}
+    public void setBucket(ArrayBucket bucket) {
+        this.bucket = bucket;
+    }
 
-	public boolean isDataBlock() {
-		return dataBlock;
-	}
+    public boolean isDataBlock() {
+        return dataBlock;
+    }
 
-	public boolean isFetchInProcess() {
-		return !fetchDone;
-	}
+    public boolean isFetchInProcess() {
+        return !fetchDone;
+    }
 
-	public void setFetchDone(boolean done) {
-		fetchDone = done;
-	}
+    public void setFetchDone(boolean done) {
+        fetchDone = done;
+    }
 
-	boolean isInsertDone() {
-		return insertDone;
-	}
+    boolean isInsertDone() {
+        return insertDone;
+    }
 
-	public void setInsertDone(boolean done) {
-		insertDone = done;
-	}
+    public void setInsertDone(boolean done) {
+        insertDone = done;
+    }
 
-	public boolean isInsertSuccessful() {
-		return insertSuccessful;
-	}
+    public boolean isInsertSuccessful() {
+        return insertSuccessful;
+    }
 
-	public void setInsertSuccessful(boolean successful) {
-		insertSuccessful = successful;
-	}
+    public void setInsertSuccessful(boolean successful) {
+        insertSuccessful = successful;
+    }
 
-	public boolean isFetchSuccessful() {
-		return fetchSuccessful;
-	}
+    public boolean isFetchSuccessful() {
+        return fetchSuccessful;
+    }
 
-	public void setFetchSuccessful(boolean successful) {
-		fetchSuccessful = successful;
-	}
+    public void setFetchSuccessful(boolean successful) {
+        fetchSuccessful = successful;
+    }
 
-	public String getResultLog() {
-		return resultLog;
-	}
+    public String getResultLog() {
+        return resultLog;
+    }
 
-	public void setResultLog(String result) {
-		resultLog = result;
-	}
+    public void setResultLog(String result) {
+        resultLog = result;
+    }
 
-	public void appendResultLog(String result) {
-		resultLog += result;
-	}
+    public void appendResultLog(String result) {
+        resultLog += result;
+    }
 }

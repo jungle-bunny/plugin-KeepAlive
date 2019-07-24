@@ -31,78 +31,78 @@ import java.io.IOException;
 
 public class SingleFetch extends SingleJob {
 
-	private boolean persistenceCheck;
+    private boolean persistenceCheck;
 
-	public SingleFetch(Reinserter reinserter, Block block, boolean persistenceCheck) {
-		super(reinserter, "fetch", block);
+    public SingleFetch(Reinserter reinserter, Block block, boolean persistenceCheck) {
+        super(reinserter, "fetch", block);
 
-		setName("KeepAlive SingleFetch");
-		this.persistenceCheck = persistenceCheck;
-	}
+        setName("KeepAlive SingleFetch");
+        this.persistenceCheck = persistenceCheck;
+    }
 
-	@Override
-	public void run() {
-		super.run();
-		FetchResult fetchResult = null;
+    @Override
+    public void run() {
+        super.run();
+        FetchResult fetchResult = null;
 
-		try {
+        try {
 
-			// init
-			HLSCIgnoreStore hlscIgnoreStore = new HLSCIgnoreStore(plugin.getFreenetClient());
+            // init
+            HLSCIgnoreStore hlscIgnoreStore = new HLSCIgnoreStore(plugin.getFreenetClient());
 
-			FreenetURI fetchUri = getUri();
-			block.setFetchDone(false);
-			block.setFetchSuccessful(false);
+            FreenetURI fetchUri = getUri();
+            block.setFetchDone(false);
+            block.setFetchSuccessful(false);
 
-			// request
-			try {
+            // request
+            try {
 
-				if (!persistenceCheck) {
-					fetchResult = plugin.getFreenetClient().fetch(fetchUri);
-				} else {
-					fetchResult = hlscIgnoreStore.fetch(fetchUri);
-				}
+                if (!persistenceCheck) {
+                    fetchResult = plugin.getFreenetClient().fetch(fetchUri);
+                } else {
+                    fetchResult = hlscIgnoreStore.fetch(fetchUri);
+                }
 
-			} catch (FetchException e) {
-				block.setResultLog("-> fetch error: " + e.getMessage());
-			}
+            } catch (FetchException e) {
+                block.setResultLog("-> fetch error: " + e.getMessage());
+            }
 
-			// log / success flag
-			if (block.getResultLog() == null) {
-				if (fetchResult == null) {
-					block.setResultLog("-> fetch failed");
-				} else {
-					block.setBucket(new ArrayBucket(fetchResult.asByteArray()));
-					block.setFetchSuccessful(true);
-					block.setResultLog("-> fetch successful");
-				}
-			}
+            // log / success flag
+            if (block.getResultLog() == null) {
+                if (fetchResult == null) {
+                    block.setResultLog("-> fetch failed");
+                } else {
+                    block.setBucket(new ArrayBucket(fetchResult.asByteArray()));
+                    block.setFetchSuccessful(true);
+                    block.setResultLog("-> fetch successful");
+                }
+            }
 
-			//finish
-			reinserter.registerBlockFetchSuccess(block);
-			block.setFetchDone(true);
+            //finish
+            reinserter.registerBlockFetchSuccess(block);
+            block.setFetchDone(true);
 
-		} catch (IOException e) {
-			plugin.log("SingleFetch.run(): " + e.getMessage(), 0);
-		} finally {
-			if (fetchResult != null && fetchResult.asBucket() != null) {
-				fetchResult.asBucket().free();
-			}
-			finish();
-		}
-	}
+        } catch (IOException e) {
+            plugin.log("SingleFetch.run(): " + e.getMessage(), 0);
+        } finally {
+            if (fetchResult != null && fetchResult.asBucket() != null) {
+                fetchResult.asBucket().free();
+            }
+            finish();
+        }
+    }
 
-	private class HLSCIgnoreStore extends HighLevelSimpleClientImpl {
+    private class HLSCIgnoreStore extends HighLevelSimpleClientImpl {
 
-		HLSCIgnoreStore(HighLevelSimpleClientImpl hlsc) {
-			super(hlsc);
-		}
+        HLSCIgnoreStore(HighLevelSimpleClientImpl hlsc) {
+            super(hlsc);
+        }
 
-		@Override
-		public FetchContext getFetchContext() {
-			FetchContext fc = super.getFetchContext();
-			fc.ignoreStore = true;
-			return fc;
-		}
-	}
+        @Override
+        public FetchContext getFetchContext() {
+            FetchContext fc = super.getFetchContext();
+            fc.ignoreStore = true;
+            return fc;
+        }
+    }
 }
