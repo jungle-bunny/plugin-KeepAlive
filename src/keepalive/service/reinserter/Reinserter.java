@@ -85,6 +85,7 @@ public class Reinserter extends Thread {
     private ArrayList<Segment> segments = new ArrayList<>();
     private AtomicInteger activeSingleJobCount = new AtomicInteger();
     private long startedAt;
+    private boolean terminated;
 
     private RequestClient rc = new RequestClient() {
 
@@ -166,13 +167,13 @@ public class Reinserter extends Thread {
                 parsedSegmentId = -1;
                 parsedBlockId = -1;
                 while (manifestURIs.size() > 0) {
-                    if (!isActive()) {
-                        if (lastActivityTime != Integer.MIN_VALUE) {
-                            plugin.log("Start reinsertion next site after stuck state (metadata)", 0);
-                            isActive(true);
-                            startReinsertionNextSite();
-                        }
+                    if (terminated) {
+                        return;
+                    }
 
+                    if (!isActive()) {
+                        plugin.log("Start reinsertion next site after stuck state (metadata)", 0);
+                        startReinsertionNextSite();
                         return;
                     }
 
@@ -183,7 +184,7 @@ public class Reinserter extends Thread {
 
                 }
 
-                if (!isActive()) {
+                if (terminated) {
                     return;
                 }
 
@@ -241,7 +242,7 @@ public class Reinserter extends Thread {
             int power = plugin.getIntProp("power");
             boolean doReinsertions = true;
             for (int attempt = 0; attempt < 8; attempt++) { // TODO: move magic number to props/settings
-                if (!isActive()) {
+                if (terminated) {
                     return;
                 }
 
@@ -437,7 +438,14 @@ public class Reinserter extends Thread {
                             synchronized (this) {
                                 this.wait(1000);
                             }
+
+                            if (terminated) {
+                                return;
+                            }
+
                             if (!isActive()) {
+                                plugin.log("Start reinsertion next site after stuck state (reinsertion)", 0);
+                                startReinsertionNextSite();
                                 return;
                             }
                         }
@@ -467,9 +475,17 @@ public class Reinserter extends Thread {
                     synchronized (this) {
                         this.wait(1000);
                     }
-                    if (!isActive()) {
+
+                    if (terminated) {
                         return;
                     }
+
+                    if (!isActive()) {
+                        plugin.log("Start reinsertion next site after stuck state (wait for finishing top block)", 0);
+                        startReinsertionNextSite();
+                        return;
+                    }
+
                     checkFinishedSegments();
                 }
             }
@@ -481,13 +497,13 @@ public class Reinserter extends Thread {
                         this.wait(1000);
                     }
 
-                    if (!isActive()) {
-                        if (lastActivityTime != Integer.MIN_VALUE) { // TODO: this is a bypass
-                            plugin.log("Start reinsertion next site after stuck state (after healing)", 0);
-                            isActive(true);
-                            break;
-                        }
+                    if (terminated) {
+                        return;
+                    }
 
+                    if (!isActive()) { // TODO: this is a bypass
+                        plugin.log("Start reinsertion next site after stuck state (after healing)", 0);
+                        startReinsertionNextSite();
                         return;
                     }
 
@@ -545,6 +561,10 @@ public class Reinserter extends Thread {
 
     private synchronized void startReinsertionNextSite() {
         try {
+            if (terminated) {
+                return;
+            }
+
             wait(60_000 / (System.currentTimeMillis() - startedAt) + 1); // so as not to burden the processor
 
             int[] ids = plugin.getIds();
@@ -556,7 +576,7 @@ public class Reinserter extends Thread {
                 }
             }
 
-            if (!isActive()) {
+            if (terminated) {
                 return;
             }
 
@@ -577,7 +597,7 @@ public class Reinserter extends Thread {
                 synchronized (this) {
                     this.wait(1000);
                 }
-                if (!isActive()) {
+                if (terminated || !isActive()) {
                     return result;
                 }
             }
@@ -597,7 +617,7 @@ public class Reinserter extends Thread {
             synchronized (this) {
                 this.wait(1000);
             }
-            if (!isActive()) {
+            if (terminated || !isActive()) {
                 return;
             }
         }
@@ -674,8 +694,7 @@ public class Reinserter extends Thread {
     private void parseMetadata(FreenetURI uri, Metadata metadata, int level) {
         try {
 
-            // activity flag
-            if (!isActive()) {
+            if (terminated) {
                 return;
             }
 
@@ -702,7 +721,7 @@ public class Reinserter extends Thread {
 
                 if (targetList != null) {
                     for (Entry<String, Metadata> entry : targetList.entrySet()) {
-                        if (!isActive()) {
+                        if (terminated) {
                             return;
                         }
                         // get document
@@ -789,7 +808,7 @@ public class Reinserter extends Thread {
 
                     // fetchWaiter.waitForCompletion();
                     while (cb.getDecompressedData() == null) { // workaround because in some cases fetchWaiter.waitForCompletion() never finished
-                        if (!isActive()) {
+                        if (terminated || !isActive()) {
                             return;
                         }
 
@@ -1250,10 +1269,10 @@ public class Reinserter extends Thread {
     public synchronized void terminate() {
         try {
 
+            terminated = true;
             if (isActive() && isAlive()) {
                 plugin.log("stop reinserter (" + siteId + ")", 1);
                 log("*** stopped ***", 0);
-                lastActivityTime = Integer.MIN_VALUE;
                 plugin.setIntProp("active", -1);
                 plugin.saveProp();
             }
@@ -1355,7 +1374,7 @@ public class Reinserter extends Thread {
         public synchronized void run() {
             try {
                 this.setName("Keepalive - ActivityGuard");
-                while (reinserter.isActive()) {
+                while (!terminated || reinserter.isActive()) {
                     wait(1000);
                 }
                 reinserter.terminate();
