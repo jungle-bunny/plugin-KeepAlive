@@ -61,6 +61,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.ZipInputStream;
 
@@ -470,16 +471,21 @@ public class Reinserter extends Thread {
 
 			// wait for finishing all segments
 			if (doReinsertions) {
+				long waitingTime = System.currentTimeMillis();
 				while (plugin.getIntProp("segment_" + siteId) != maxSegmentId) {
 					synchronized (this) {
 						this.wait(1000);
 					}
 
-					if (!isActive()) {
-						// TODO: this is a bypass
-						plugin.log("Start reinsertion next site after inactive state", 0);
+					// TODO: this is a bypass
+					if (System.currentTimeMillis() - waitingTime > TimeUnit.MINUTES.toMillis(15)) {
+						plugin.log("Start reinsertion next site after stuck state", 0);
 						isActive(true);
 						break;
+					}
+
+					if (!isActive()) {
+						return;
 					}
 
 					checkFinishedSegments();
@@ -1264,7 +1270,7 @@ public class Reinserter extends Thread {
 		}
 		if (lastActivityTime != Integer.MIN_VALUE) {
 			long delay = (System.currentTimeMillis() - lastActivityTime) / 60_000; // delay in minutes
-			return (delay < SingleJob.MAX_LIFETIME + 1);
+			return (delay < SingleJob.MAX_LIFETIME + 5);
 		}
 		return false;
 	}
