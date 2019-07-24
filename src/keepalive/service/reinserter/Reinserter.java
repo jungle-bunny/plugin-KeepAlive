@@ -61,7 +61,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.ZipInputStream;
 
@@ -168,6 +167,12 @@ public class Reinserter extends Thread {
 				parsedBlockId = -1;
 				while (manifestURIs.size() > 0) {
 					if (!isActive()) {
+						if (lastActivityTime != Integer.MIN_VALUE) {
+							plugin.log("Start reinsertion next site after stuck state (metadata)", 0);
+							isActive(true);
+							startReinsertionNextSite();
+						}
+
 						return;
 					}
 
@@ -471,20 +476,18 @@ public class Reinserter extends Thread {
 
 			// wait for finishing all segments
 			if (doReinsertions) {
-				long waitingTime = System.currentTimeMillis();
 				while (plugin.getIntProp("segment_" + siteId) != maxSegmentId) {
 					synchronized (this) {
 						this.wait(1000);
 					}
 
-					// TODO: this is a bypass
-					if (System.currentTimeMillis() - waitingTime > TimeUnit.MINUTES.toMillis(15)) {
-						plugin.log("Start reinsertion next site after stuck state", 0);
-						isActive(true);
-						break;
-					}
-
 					if (!isActive()) {
+						if (lastActivityTime != Integer.MIN_VALUE) { // TODO: this is a bypass
+							plugin.log("Start reinsertion next site after stuck state (after healing)", 0);
+							isActive(true);
+							break;
+						}
+
 						return;
 					}
 
@@ -785,7 +788,9 @@ public class Reinserter extends Thread {
 
 					// fetchWaiter.waitForCompletion();
 					while (cb.getDecompressedData() == null) { // workaround because in some cases fetchWaiter.waitForCompletion() never finished
-						if (!isActive()) return;
+						if (!isActive()) {
+							return;
+						}
 
 						synchronized (this) {
 							wait(100);
@@ -1023,7 +1028,7 @@ public class Reinserter extends Thread {
 			return fetchManifest(result.asByteArray(), archiveType, manifestName);
 
 		} catch (FetchException | IOException e) {
-			plugin.log("Reinserter.fetchManifest(uri): " + e.getMessage());
+			plugin.log("Reinserter.fetchManifest(" + uri + "): " + e.getMessage());
 			return null;
 		}
 	}
