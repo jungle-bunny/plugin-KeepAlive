@@ -767,8 +767,9 @@ public class Reinserter extends Thread {
 
                 // create metadata from splitfile (if not simple splitfile)
                 if (!metadata.isSimpleSplitfile()) {
+                    // TODO: move fetch to net package
                     FetchContext fetchContext = pr.getHLSimpleClient().getFetchContext();
-                    freenet.client.async.ClientContext clientContext = pr.getNode().clientCore.clientContext;
+                    ClientContext clientContext = pr.getNode().clientCore.clientContext;
                     FetchWaiter fetchWaiter = new FetchWaiter(plugin.getFreenetClient());
                     List<COMPRESSOR_TYPE> decompressors = new LinkedList<>();
                     if (metadata.isCompressed()) {
@@ -885,20 +886,18 @@ public class Reinserter extends Thread {
                 ByteArrayOutputStream rawOutStream = new ByteArrayOutputStream();
                 streamGenerator.writeTo(rawOutStream, null);
                 rawOutStream.close();
-                byte[] aCompressedSplitFileData = rawOutStream.toByteArray();
+                byte[] compressedSplitFileData = rawOutStream.toByteArray();
 
                 // decompress (if necessary)
                 if (decompressors.size() > 0) {
-                    ByteArrayOutputStream decompressedOutStream;
-                    try (ByteArrayInputStream compressedInStream = new ByteArrayInputStream(aCompressedSplitFileData)) {
-                        decompressedOutStream = new ByteArrayOutputStream();
+                    try (ByteArrayInputStream compressedInStream = new ByteArrayInputStream(compressedSplitFileData);
+                         ByteArrayOutputStream decompressedOutStream = new ByteArrayOutputStream()) {
                         decompressors.get(0).decompress(compressedInStream, decompressedOutStream, Integer.MAX_VALUE, -1);
+                        decompressedSplitFileData = decompressedOutStream.toByteArray();
                     }
-                    decompressedOutStream.close();
-                    decompressedSplitFileData = decompressedOutStream.toByteArray();
                     fetchWaiter.onSuccess(null, null);
                 } else {
-                    decompressedSplitFileData = aCompressedSplitFileData;
+                    decompressedSplitFileData = compressedSplitFileData;
                 }
 
             } catch (IOException e) {
@@ -1022,7 +1021,7 @@ public class Reinserter extends Thread {
             FetchContext fetchContext = plugin.getFreenetClient().getFetchContext();
             fetchContext.returnZIPManifests = true;
             FetchWaiter fetchWaiter = new FetchWaiter(rc);
-            plugin.getFreenetClient().fetch(uri, -1, fetchWaiter, fetchContext);
+            plugin.getFreenetClient().fetch(uri, -1, fetchWaiter, fetchContext); // TODO: move fetch to net package
             FetchResult result = fetchWaiter.waitForCompletion();
 
             return fetchManifest(result.asByteArray(), archiveType, manifestName);
@@ -1115,7 +1114,7 @@ public class Reinserter extends Thread {
         FetchWaiter fetchWaiter = new FetchWaiter(rc);
 
         try {
-            plugin.getFreenetClient().fetch(uri, -1, fetchWaiter, fetchContext);
+            plugin.getFreenetClient().fetch(uri, -1, fetchWaiter, fetchContext); // TODO: move fetch to net package
             fetchWaiter.waitForCompletion();
         } catch (freenet.client.FetchException e) {
             if (e.getMode() == FetchExceptionMode.PERMANENT_REDIRECT) {
