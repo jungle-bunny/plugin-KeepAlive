@@ -179,7 +179,13 @@ public class Reinserter extends Thread {
 
                     uri = (FreenetURI) manifestURIs.keySet().toArray()[0];
                     log(uri.toString(), 0);
-                    parseMetadata(uri, null, 0);
+                    try {
+                        parseMetadata(uri, null, 0);
+                    } catch (FetchException e) {
+                        log(e.extraMessage, 0);
+                        startReinsertionNextSite();
+                        return;
+                    }
                     manifestURIs.remove(uri);
 
                 }
@@ -691,7 +697,7 @@ public class Reinserter extends Thread {
         }
     }
 
-    private void parseMetadata(FreenetURI uri, Metadata metadata, int level) {
+    private void parseMetadata(FreenetURI uri, Metadata metadata, int level) throws FetchException {
         try {
 
             if (terminated) {
@@ -808,8 +814,12 @@ public class Reinserter extends Thread {
 
                     // fetchWaiter.waitForCompletion();
                     while (cb.getDecompressedData() == null) { // workaround because in some cases fetchWaiter.waitForCompletion() never finished
-                        if (terminated || !isActive()) {
+                        if (terminated) {
                             return;
+                        }
+
+                        if (!isActive()) {
+                            throw new FetchException(FetchExceptionMode.UNKNOWN_SPLITFILE_METADATA, "Manifest cannot be fetched");
                         }
 
                         synchronized (this) {
@@ -822,6 +832,8 @@ public class Reinserter extends Thread {
                 }
             }
 
+        } catch (FetchException e) {
+            throw e;
         } catch (Exception e) {
             plugin.log("Reinserter.parseMetadata(): " + e.getMessage());
         }
@@ -1374,7 +1386,7 @@ public class Reinserter extends Thread {
         public synchronized void run() {
             try {
                 this.setName("Keepalive - ActivityGuard");
-                while (!terminated || reinserter.isActive()) {
+                while (!reinserter.terminated || reinserter.isActive()) {
                     wait(1000);
                 }
                 reinserter.terminate();
@@ -1387,7 +1399,7 @@ public class Reinserter extends Thread {
                     }
                 }
 
-                if (!reinserter.isAlive()) {
+                if (reinserter.terminated) {
                     plugin.log("reinserter stopped (" + siteId + ")");
                 } else {
                     plugin.log("reinserter not stopped - stop was indicated 10 minutes before (" + siteId + ")");
