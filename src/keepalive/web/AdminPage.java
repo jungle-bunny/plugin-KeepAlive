@@ -150,20 +150,19 @@ public class AdminPage extends PageBase {
 
     private void logBox() throws Exception {
         if (getParam("master_log") != null || getParam("log") != null) {
-            String cLog;
+            String log;
             if (getParam("master_log") != null) {
-                cLog = plugin.getLog();
+                log = plugin.getLog();
             } else {
-                cLog = plugin.getLog(plugin.getLogFilename(getIntParam("log")));
+                log = plugin.getLog(plugin.getLogFilename(getIntParam("log")));
             }
 
-
-            if (cLog == null) {
-                cLog = "";
+            if (log == null) {
+                log = "";
             }
 
             StringBuilder html = new StringBuilder(
-                    ("<small>" + cLog + "</small>")
+                    ("<small>" + log + "</small>")
                             .replaceAll("\n", "<br>")
                             .replaceAll(" {2}", "&nbsp; &nbsp; "));
 
