@@ -26,11 +26,10 @@ import keepalive.service.reinserter.Reinserter;
 import keepalive.model.Block;
 import keepalive.model.Segment;
 
-public class SingleInsert extends SingleJob {
+public class SingleInsert extends SingleJob implements Runnable {
 
     public SingleInsert(Reinserter reinserter, Block block) {
         super(reinserter, "insertion", block);
-        this.setName("KeepAlive SingleInsert");
     }
 
     @Override
@@ -40,7 +39,7 @@ public class SingleInsert extends SingleJob {
 
     @Override
     public void run() {
-        super.run();
+        Thread.currentThread().setName("KeepAlive SingleInsert");
 
         FreenetURI fetchUri = getUri();
         block.setInsertDone(false);
@@ -51,8 +50,7 @@ public class SingleInsert extends SingleJob {
             // fetch
             if (block.getBucket() == null) {
                 SingleFetch singleFetch = new SingleFetch(reinserter, block, false);
-                singleFetch.start();
-                singleFetch.join();
+                singleFetch.call();
                 if (!reinserter.isActive()) {
                     return;
                 }
@@ -62,10 +60,11 @@ public class SingleInsert extends SingleJob {
 
             if (block.getBucket() == null) {
                 block.setResultLog("-> insertion failed: fetch failed");
-            }
+            } else { // insert
+                if (Thread.currentThread().isInterrupted()) {
+                    return;
+                }
 
-            // insert
-            else {
                 try {
 
                     InsertBlock insertBlock = new InsertBlock(block.getBucket(), null, fetchUri);
@@ -120,7 +119,7 @@ public class SingleInsert extends SingleJob {
             block.setInsertDone(true);
 
         } catch (Exception e) {
-            plugin.log("SingleInsert.run(): " + e.getMessage(), 0);
+            log("SingleInsert.run(): " + e.getMessage(), 0);
         } finally {
             finish();
         }

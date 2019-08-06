@@ -18,18 +18,10 @@
  */
 package keepalive.service.reinserter;
 
+import freenet.client.*;
 import freenet.client.ArchiveManager.ARCHIVE_TYPE;
-import freenet.client.ClientMetadata;
-import freenet.client.FECCodec;
-import freenet.client.FetchContext;
-import freenet.client.FetchException;
-import freenet.client.FetchException.FetchExceptionMode;
-import freenet.client.FetchResult;
-import freenet.client.FetchWaiter;
 import freenet.client.InsertContext.CompatibilityMode;
-import freenet.client.Metadata;
 import freenet.client.Metadata.SplitfileAlgorithm;
-import freenet.client.MetadataParseException;
 import freenet.client.async.ClientBaseCallback;
 import freenet.client.async.ClientContext;
 import freenet.client.async.ClientGetState;
@@ -48,12 +40,7 @@ import freenet.support.compress.Compressor;
 import freenet.support.compress.Compressor.COMPRESSOR_TYPE;
 import freenet.support.io.ArrayBucket;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.RandomAccessFile;
+import java.io.*;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -61,31 +48,30 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.*;
 import java.util.zip.ZipInputStream;
 
 import keepalive.Plugin;
 import keepalive.model.Block;
 import keepalive.model.Segment;
+import keepalive.service.net.FetchFailedException;
 import keepalive.service.net.SingleFetch;
 import keepalive.service.net.SingleInsert;
 import keepalive.service.net.SingleJob;
 import org.apache.tools.tar.TarInputStream;
 
-public class Reinserter extends Thread {
+public final class Reinserter extends Thread {
 
-    private Plugin plugin;
+    private final Plugin plugin;
+    private final int siteId;
+    private final CountDownLatch latch;
     private PluginRespirator pr;
-    private int siteId;
     private long lastActivityTime;
     private HashMap<FreenetURI, Metadata> manifestURIs;
     private HashMap<FreenetURI, Block> blocks;
     private int parsedSegmentId;
     private int parsedBlockId;
     private ArrayList<Segment> segments = new ArrayList<>();
-    private AtomicInteger activeSingleJobCount = new AtomicInteger();
-    private long startedAt;
-    private boolean terminated;
 
     private RequestClient rc = new RequestClient() {
 
@@ -100,25 +86,11 @@ public class Reinserter extends Thread {
         }
     };
 
-    public Reinserter(Plugin plugin, int siteId) {
-        try {
-
-            this.plugin = plugin;
-            this.siteId = siteId;
-            this.setName("KeepAlive ReInserter");
-
-            // stop previous reinserter, start this one
-            plugin.stopReinserter();
-            plugin.setIntProp("active", siteId);
-            plugin.saveProp();
-            plugin.setReinserter(this);
-
-            // activity guard
-            (new ActivityGuard(this)).start();
-
-        } catch (Exception e) {
-            plugin.log("Reinserter(): " + e.getMessage());
-        }
+    public Reinserter(Plugin plugin, int siteId, CountDownLatch latch) {
+        this.plugin = plugin;
+        this.siteId = siteId;
+        this.latch = latch;
+        this.setName("KeepAlive ReInserter " + siteId);
     }
 
     @Override
@@ -132,10 +104,11 @@ public class Reinserter extends Thread {
             String uriProp = plugin.getProp("uri_" + siteId);
             plugin.log("start reinserter for site " + uriProp + " (" + siteId + ")", 1);
             plugin.clearLog(plugin.getLogFilename(siteId));
-            startedAt = System.currentTimeMillis();
+            isActive(true);
 
-            // update and register uri
             FreenetURI uri = new FreenetURI(uriProp);
+
+            // update if USK
             if (uri.isUSK()) {
                 FreenetURI newUri = updateUsk(uri);
                 if (newUri != null && !newUri.equals(uri)) {
@@ -143,7 +116,6 @@ public class Reinserter extends Thread {
                     plugin.log("received new uri: " + newUriString, 1);
                     if (plugin.isDuplicate(newUriString)) {
                         plugin.log("remove uri as duplicate: " + newUriString, 1);
-                        startReinsertionNextSite();
                         plugin.removeUri(siteId);
                         return;
                     } else {
@@ -153,6 +125,8 @@ public class Reinserter extends Thread {
                     }
                 }
             }
+
+            // register uri
             registerManifestUri(uri, -1);
 
             // load list of keys (if exists)
@@ -167,13 +141,12 @@ public class Reinserter extends Thread {
                 parsedSegmentId = -1;
                 parsedBlockId = -1;
                 while (manifestURIs.size() > 0) {
-                    if (terminated) {
+                    if (isInterrupted()) {
                         return;
                     }
 
                     if (!isActive()) {
-                        plugin.log("Start reinsertion next site after stuck state (metadata)", 0);
-                        startReinsertionNextSite();
+                        plugin.log("Stop after stuck state (metadata)", 0);
                         return;
                     }
 
@@ -181,16 +154,15 @@ public class Reinserter extends Thread {
                     log(uri.toString(), 0);
                     try {
                         parseMetadata(uri, null, 0);
-                    } catch (FetchException e) {
-                        log(e.extraMessage, 0);
-                        startReinsertionNextSite();
+                    } catch (FetchFailedException e) {
+                        log(e.getMessage(), 0);
                         return;
                     }
                     manifestURIs.remove(uri);
 
                 }
 
-                if (terminated) {
+                if (isInterrupted()) {
                     return;
                 }
 
@@ -248,21 +220,21 @@ public class Reinserter extends Thread {
             int power = plugin.getIntProp("power");
             boolean doReinsertions = true;
             for (int attempt = 0; attempt < 8; attempt++) { // TODO: move magic number to props/settings
-                if (terminated) {
+                if (isInterrupted()) {
                     return;
                 }
 
                 // next segment
-                int nSegmentSize = 0;
+                int segmentSize = 0;
                 for (Block block : blocks.values()) {
                     if (block.getSegmentId() == segments.size()) {
-                        nSegmentSize++;
+                        segmentSize++;
                     }
                 }
-                if (nSegmentSize == 0) {
+                if (segmentSize == 0) {
                     break; // ready
                 }
-                Segment segment = new Segment(this, segments.size(), nSegmentSize);
+                Segment segment = new Segment(this, segments.size(), segmentSize);
                 for (Block block : blocks.values()) {
                     if (block.getSegmentId() == segments.size()) {
                         segment.addBlock(block);
@@ -279,7 +251,6 @@ public class Reinserter extends Thread {
 
                     // select prove blocks
                     ArrayList<Block> requestedBlocks = new ArrayList<>();
-                    int segmentSize = segment.size();
                     // always fetch exactly the configured number of blocks (or half segment size, whichever is smaller)
                     int splitfileTestSize = Math.min(
                             plugin.getIntProp("splitfile_test_size"),
@@ -296,17 +267,31 @@ public class Reinserter extends Thread {
                         }
                     }
 
-                    for (Block requestedBlock : requestedBlocks) {
-                        waitForNextFreeThread(power);
-
-                        // fetch a block
-                        (new SingleFetch(this, requestedBlock, true)).start();
+                    ExecutorService executor = Executors.newFixedThreadPool(power);
+                    FetchBlocksResult fetchBlocksResult = new FetchBlocksResult();
+                    try {
+                        for (Block requestedBlock : requestedBlocks) {
+                            // fetch a block
+                            SingleFetch singleFetch = new SingleFetch(this, requestedBlock, true);
+                            Future<Boolean> fetchFuture = executor.submit(singleFetch);
+                            fetchBlocksResult.addResult(fetchFuture.get());
+                        }
+                        executor.shutdown();
+                        boolean done = executor.awaitTermination(1, TimeUnit.HOURS);
+                        if (!done) {
+                            log(segment, "<b>availability check failed</b>", 0);
+                            return;
+                        }
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    } finally {
+                        if (!executor.isShutdown()) {
+                            executor.shutdownNow();
+                        }
                     }
 
-                    FetchBlocksResult result = waitForAllBlocksFetched(requestedBlocks);
-
-                    // calculate persistence rate
-                    double persistenceRate = (double) result.successful / (result.successful + result.failed);
+                    double persistenceRate = fetchBlocksResult.calculatePersistenceRate();
                     if (persistenceRate >= (double) plugin.getIntProp("splitfile_tolerance") / 100) {
                         doReinsertions = false;
                         segment.regFetchSuccess(persistenceRate);
@@ -333,20 +318,35 @@ public class Reinserter extends Thread {
                                 requestedBlocks.add(segment.getBlock(i));
                             }
                         }
-                        for (Block requestedBlock : requestedBlocks) {
-                            waitForNextFreeThread(power);
 
-                            // fetch next block that has not been fetched yet
-                            if (requestedBlock.isFetchInProcess()) {
-                                SingleFetch fetch = new SingleFetch(this, requestedBlock, true);
-                                fetch.start();
+                        executor = Executors.newFixedThreadPool(power);
+                        fetchBlocksResult = new FetchBlocksResult();
+                        try {
+                            for (Block requestedBlock : requestedBlocks) {
+                                // fetch next block that has not been fetched yet
+                                if (requestedBlock.isFetchInProcess()) {
+                                    SingleFetch singleFetch = new SingleFetch(this, requestedBlock, true);
+                                    Future<Boolean> fetchFuture = executor.submit(singleFetch);
+                                    fetchBlocksResult.addResult(fetchFuture.get());
+                                }
+                            }
+
+                            executor.shutdown();
+                            boolean done = executor.awaitTermination(1, TimeUnit.HOURS);
+                            if (!done) {
+                                log(segment, "<b>get all available blocks failed</b>", 0);
+                                return;
+                            }
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            return;
+                        } finally {
+                            if (!executor.isShutdown()) {
+                                executor.shutdownNow();
                             }
                         }
 
-                        result = waitForAllBlocksFetched(requestedBlocks);
-
-                        // calculate persistence rate
-                        persistenceRate = (double) result.successful / (result.successful + result.failed);
+                        persistenceRate = fetchBlocksResult.calculatePersistenceRate();
                         if (persistenceRate >= (double) plugin.getIntProp("splitfile_tolerance") / 100.0) {
                             doReinsertions = false;
                             segment.regFetchSuccess(persistenceRate);
@@ -439,33 +439,36 @@ public class Reinserter extends Thread {
                     log(segment, "starting reinsertion", 0, 1);
                     segment.initInsert();
 
-                    for (int i = 0; i < segment.size(); i++) {
-                        while (activeSingleJobCount.get() >= plugin.getIntProp("power")) {
-                            synchronized (this) {
-                                this.wait(1000);
-                            }
-
-                            if (terminated) {
-                                return;
-                            }
-
-                            if (!isActive()) {
-                                plugin.log("Start reinsertion next site after stuck state (reinsertion)", 0);
-                                startReinsertionNextSite();
-                                return;
+                    ExecutorService executor = Executors.newFixedThreadPool(power);
+                    try {
+                        for (int i = 0; i < segment.size(); i++) {
+                            checkFinishedSegments();
+                            isActive(true);
+                            if (segment.size() > 1) {
+                                if (segment.getBlock(i).isFetchSuccessful()) {
+                                    segment.regFetchSuccess(true);
+                                } else {
+                                    segment.regFetchSuccess(false);
+                                    SingleInsert singleInsert = new SingleInsert(this, segment.getBlock(i));
+                                    executor.submit(singleInsert);
+                                }
+                            } else {
+                                SingleInsert singleInsert = new SingleInsert(this, segment.getBlock(i));
+                                executor.submit(singleInsert);
                             }
                         }
-                        checkFinishedSegments();
-                        isActive(true);
-                        if (segment.size() > 1) {
-                            if (segment.getBlock(i).isFetchSuccessful()) {
-                                segment.regFetchSuccess(true);
-                            } else {
-                                segment.regFetchSuccess(false);
-                                (new SingleInsert(this, segment.getBlock(i))).start();
-                            }
-                        } else {
-                            (new SingleInsert(this, segment.getBlock(i))).start();
+                        executor.shutdown();
+                        boolean done = executor.awaitTermination(1, TimeUnit.HOURS);
+                        if (!done) {
+                            log(segment, "<b>reinsertion failed</b>", 0);
+                            return;
+                        }
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    } finally {
+                        if (!executor.isShutdown()) {
+                            executor.shutdownNow();
                         }
                     }
 
@@ -482,13 +485,12 @@ public class Reinserter extends Thread {
                         this.wait(1000);
                     }
 
-                    if (terminated) {
+                    if (isInterrupted()) {
                         return;
                     }
 
                     if (!isActive()) {
-                        plugin.log("Start reinsertion next site after stuck state (wait for finishing top block)", 0);
-                        startReinsertionNextSite();
+                        plugin.log("Stop after stuck state (wait for finishing top block)", 0);
                         return;
                     }
 
@@ -500,16 +502,15 @@ public class Reinserter extends Thread {
             if (doReinsertions) {
                 while (plugin.getIntProp("segment_" + siteId) != maxSegmentId) {
                     synchronized (this) {
-                        this.wait(1000);
+                        this.wait(1_000);
                     }
 
-                    if (terminated) {
+                    if (isInterrupted()) {
                         return;
                     }
 
                     if (!isActive()) { // TODO: this is a bypass
-                        plugin.log("Start reinsertion next site after stuck state (after healing)", 0);
-                        startReinsertionNextSite();
+                        plugin.log("Stop after stuck state (after healing)", 0);
                         return;
                     }
 
@@ -533,7 +534,7 @@ public class Reinserter extends Thread {
                 boolean bNewMonth = true;
                 if (cHistory != null && cHistory.contains(cThisMonth)) {
                     bNewMonth = false;
-                    int nOldPersistence = Integer.valueOf(aHistory[aHistory.length - 1].split("-")[1]);
+                    int nOldPersistence = Integer.parseInt(aHistory[aHistory.length - 1].split("-")[1]);
                     nPersistence = Math.min(nPersistence, nOldPersistence);
                     aHistory[aHistory.length - 1] = cThisMonth + "-" + nPersistence;
                 }
@@ -558,127 +559,52 @@ public class Reinserter extends Thread {
             log("*** reinsertion finished ***", 0, 0);
             plugin.log("reinsertion finished for " + plugin.getProp("uri_" + siteId), 1);
 
-            startReinsertionNextSite();
-
         } catch (Exception e) {
-            plugin.log("Reinserter.run(): " + e.getMessage(), 0);
+            plugin.log("Reinserter.run(): " + e.getClass().getName() + " " + e.getMessage(), 0);
+            plugin.log(plugin.stackTraceToString(e));
+        } finally {
+            latch.countDown();
+            log("stopped", 0);
+            plugin.log("reinserter stopped (" + siteId + ")");
         }
-    }
-
-    private synchronized void startReinsertionNextSite() {
-        try {
-            if (terminated) {
-                return;
-            }
-
-            wait(60_000 / (System.currentTimeMillis() - startedAt) + 1); // so as not to burden the processor
-
-            int[] ids = plugin.getIds();
-
-            int i = 0;
-            for (; i < ids.length; i++) {
-                if (siteId == ids[i]) {
-                    break;
-                }
-            }
-
-            if (terminated) {
-                return;
-            }
-
-            if (i < ids.length - 1) {
-                plugin.startReinserter(ids[i + 1]);
-            } else {
-                plugin.startReinserter(ids[0]);
-            }
-        } catch (Exception e) {
-            plugin.log("Reinserter.run(): " + e.getMessage(), 0);
-        }
-    }
-
-    private FetchBlocksResult waitForAllBlocksFetched(List<Block> requestedBlocks) throws InterruptedException {
-        FetchBlocksResult result = new FetchBlocksResult();
-        for (Block vRequestedBlock : requestedBlocks) {
-            while (vRequestedBlock.isFetchInProcess()) {
-                synchronized (this) {
-                    this.wait(1000);
-                }
-                if (terminated || !isActive()) {
-                    return result;
-                }
-            }
-            checkFinishedSegments();
-            isActive(true);
-            if (vRequestedBlock.isFetchSuccessful()) {
-                result.successful++;
-            } else {
-                result.failed++;
-            }
-        }
-        return result;
-    }
-
-    private void waitForNextFreeThread(int power) throws InterruptedException {
-        while (activeSingleJobCount.get() >= power) {
-            synchronized (this) {
-                this.wait(1000);
-            }
-            if (terminated || !isActive()) {
-                return;
-            }
-        }
-        checkFinishedSegments();
-        isActive(true);
     }
 
     private void checkFinishedSegments() {
-        try {
-
-            int segment;
-            while ((segment = plugin.getIntProp("segment_" + siteId)) < segments.size() - 1) {
-                if (segments.get(segment + 1).isFinished()) {
-                    plugin.setIntProp("segment_" + siteId, segment + 1);
-                } else {
-                    break;
-                }
+        int segment;
+        while ((segment = plugin.getIntProp("segment_" + siteId)) < segments.size() - 1) {
+            if (segments.get(segment + 1).isFinished()) {
+                plugin.setIntProp("segment_" + siteId, segment + 1);
+            } else {
+                break;
             }
-            plugin.saveProp();
+        }
+        plugin.saveProp();
+    }
 
-        } catch (Exception e) {
-            plugin.log("Reinserter.checkFinishedSegments(): " + e.getMessage(), 0);
+    private void saveBlockUris() throws IOException {
+        File f = new File(plugin.getPluginDirectory() + plugin.getBlockListFilename(siteId));
+        if (f.exists()) {
+            if (!f.delete()) {
+                log("Reinserter.saveBlockUris(): remove block list log files was not successful.", 0);
+            }
+        }
+
+        try (RandomAccessFile file = new RandomAccessFile(f, "rw")) {
+            file.setLength(0);
+            for (Block block : blocks.values()) {
+                if (file.getFilePointer() > 0) {
+                    file.writeBytes("\n");
+                }
+                String type = "d";
+                if (!block.isDataBlock()) {
+                    type = "c";
+                }
+                file.writeBytes(block.getUri().toString() + "#" + block.getSegmentId() + "#" + block.getId() + "#" + type);
+            }
         }
     }
 
-    private void saveBlockUris() {
-        try {
-
-            File f = new File(plugin.getPluginDirectory() + plugin.getBlockListFilename(siteId));
-            if (f.exists()) {
-                if (!f.delete()) {
-                    log("Reinserter.saveBlockUris(): remove block list log files was not successful.", 0);
-                }
-            }
-
-            try (RandomAccessFile file = new RandomAccessFile(f, "rw")) {
-                file.setLength(0);
-                for (Block block : blocks.values()) {
-                    if (file.getFilePointer() > 0) {
-                        file.writeBytes("\n");
-                    }
-                    String type = "d";
-                    if (!block.isDataBlock()) {
-                        type = "c";
-                    }
-                    file.writeBytes(block.getUri().toString() + "#" + block.getSegmentId() + "#" + block.getId() + "#" + type);
-                }
-            }
-
-        } catch (IOException e) {
-            plugin.log("Reinserter.saveBlockUris(): " + e.getMessage(), 0);
-        }
-    }
-
-    private synchronized void loadBlockUris() {
+    private synchronized void loadBlockUris() throws IOException {
         try (RandomAccessFile file = new RandomAccessFile(
                 plugin.getPluginDirectory() + plugin.getBlockListFilename(siteId), "r")) {
 
@@ -692,150 +618,146 @@ public class Reinserter extends Thread {
                 blocks.put(uri, new Block(uri, segmentId, blockId, isDataBlock));
             }
 
-        } catch (IOException | NumberFormatException e) {
-            plugin.log("Reinserter.loadBlockUris(): " + e.getMessage(), 0);
         }
     }
 
-    private void parseMetadata(FreenetURI uri, Metadata metadata, int level) throws FetchException {
-        try {
+    private void parseMetadata(FreenetURI uri, Metadata metadata, int level)
+            throws FetchFailedException, MetadataParseException, FetchException, IOException {
+        if (isInterrupted()) {
+            return;
+        }
 
-            if (terminated) {
-                return;
-            }
+        // register uri
+        registerBlockUri(uri, true, true, level);
 
-            // register uri
-            registerBlockUri(uri, true, true, level);
-
-            // constructs top level simple manifest (= first action on a new uri)
+        // constructs top level simple manifest (= first action on a new uri)
+        if (metadata == null) {
+            metadata = fetchManifest(uri, null, null);
             if (metadata == null) {
-                metadata = fetchManifest(uri, null, null);
-                if (metadata == null) {
-                    log("no metadata", level);
-                    return;
-                }
+                log("no metadata", level);
+                return;
+            }
+        }
+
+        // internal manifest (simple manifest)
+        if (metadata.isSimpleManifest()) {
+            log("manifest (" + getMetadataType(metadata) + "): " + metadata.getResolvedName(), level);
+            HashMap<String, Metadata> targetList = null;
+            try {
+                targetList = metadata.getDocuments();
+            } catch (Exception ignored) {
             }
 
-            // internal manifest (simple manifest)
-            if (metadata.isSimpleManifest()) {
-                log("manifest (" + getMetadataType(metadata) + "): " + metadata.getResolvedName(), level);
-                HashMap<String, Metadata> targetList = null;
-                try {
-                    targetList = metadata.getDocuments();
-                } catch (Exception ignored) {
-                }
-
-                if (targetList != null) {
-                    for (Entry<String, Metadata> entry : targetList.entrySet()) {
-                        if (terminated) {
-                            return;
-                        }
-                        // get document
-                        Metadata target = entry.getValue();
-                        // remember document name
-                        target.resolve(entry.getKey());
-                        // parse document
-                        parseMetadata(uri, target, level + 1);
+            if (targetList != null) {
+                for (Entry<String, Metadata> entry : targetList.entrySet()) {
+                    if (isInterrupted()) {
+                        return;
                     }
+                    // get document
+                    Metadata target = entry.getValue();
+                    // remember document name
+                    target.resolve(entry.getKey());
+                    // parse document
+                    parseMetadata(uri, target, level + 1);
                 }
-
-                return;
             }
 
-            // redirect to submanifest
-            if (metadata.isArchiveMetadataRedirect()) {
-                log("document (" + getMetadataType(metadata) + "): " + metadata.getResolvedName(), level);
-                Metadata subManifest = fetchManifest(uri, metadata.getArchiveType(), metadata.getArchiveInternalName());
-                parseMetadata(uri, subManifest, level);
-                return;
+            return;
+        }
+
+        // redirect to submanifest
+        if (metadata.isArchiveMetadataRedirect()) {
+            log("document (" + getMetadataType(metadata) + "): " + metadata.getResolvedName(), level);
+            Metadata subManifest = fetchManifest(uri, metadata.getArchiveType(), metadata.getArchiveInternalName());
+            parseMetadata(uri, subManifest, level);
+            return;
+        }
+
+        // internal redirect
+        if (metadata.isArchiveInternalRedirect()) {
+            log("document (" + getMetadataType(metadata) + "): " + metadata.getArchiveInternalName(), level);
+            return;
+        }
+
+        // single file redirect with external key (only possible if archive manifest or simple redirect but not splitfile)
+        if (metadata.isSingleFileRedirect()) {
+            log("document (" + getMetadataType(metadata) + "): " + metadata.getResolvedName(), level);
+            FreenetURI targetUri = metadata.getSingleTarget();
+            log("-> redirect to: " + targetUri, level);
+            registerManifestUri(targetUri, level);
+            registerBlockUri(targetUri, true, true, level);
+            return;
+        }
+
+        // splitfile
+        if (metadata.isSplitfile()) {
+            // splitfile type
+            if (metadata.isSimpleSplitfile()) {
+                log("simple splitfile: " + metadata.getResolvedName(), level);
+            } else {
+                log("splitfile (not simple): " + metadata.getResolvedName(), level);
             }
 
-            // internal redirect
-            if (metadata.isArchiveInternalRedirect()) {
-                log("document (" + getMetadataType(metadata) + "): " + metadata.getArchiveInternalName(), level);
-                return;
+            // register blocks
+            Metadata metadata2 = (Metadata) metadata.clone();
+            SplitFileSegmentKeys[] segmentKeys = metadata2.grabSegmentKeys();
+            for (int i = 0; i < segmentKeys.length; i++) {
+                int dataBlocks = segmentKeys[i].getDataBlocks();
+                int checkBlocks = segmentKeys[i].getCheckBlocks();
+                log("segment_" + i + ": " + (dataBlocks + checkBlocks) +
+                        " (data=" + dataBlocks + ", check=" + checkBlocks + ")", level + 1);
+                for (int j = 0; j < dataBlocks + checkBlocks; j++) {
+                    FreenetURI splitUri = segmentKeys[i].getKey(j, null, false).getURI();
+                    log("block: " + splitUri, level + 1);
+                    registerBlockUri(splitUri, (j == 0), (j < dataBlocks), level + 1);
+                }
             }
 
-            // single file redirect with external key (only possible if archive manifest or simple redirect but not splitfile)
-            if (metadata.isSingleFileRedirect()) {
-                log("document (" + getMetadataType(metadata) + "): " + metadata.getResolvedName(), level);
-                FreenetURI targetUri = metadata.getSingleTarget();
-                log("-> redirect to: " + targetUri, level);
-                registerManifestUri(targetUri, level);
-                registerBlockUri(targetUri, true, true, level);
-                return;
-            }
-
-            // splitfile
-            if (metadata.isSplitfile()) {
-                // splitfile type
-                if (metadata.isSimpleSplitfile()) {
-                    log("simple splitfile: " + metadata.getResolvedName(), level);
+            // create metadata from splitfile (if not simple splitfile)
+            if (!metadata.isSimpleSplitfile()) {
+                // TODO: move fetch to net package
+                FetchContext fetchContext = pr.getHLSimpleClient().getFetchContext();
+                ClientContext clientContext = pr.getNode().clientCore.clientContext;
+                FetchWaiter fetchWaiter = new FetchWaiter(plugin.getFreenetClient());
+                List<COMPRESSOR_TYPE> decompressors = new LinkedList<>();
+                if (metadata.isCompressed()) {
+                    log("is compressed: " + metadata.getCompressionCodec(), level + 1);
+                    decompressors.add(metadata.getCompressionCodec());
                 } else {
-                    log("splitfile (not simple): " + metadata.getResolvedName(), level);
+                    log("is not compressed", level + 1);
                 }
+                SplitfileGetCompletionCallback cb = new SplitfileGetCompletionCallback(fetchWaiter);
+                VerySimpleGetter vsg = new VerySimpleGetter((short) 2, null, plugin.getFreenetClient());
+                SplitFileFetcher sf = new SplitFileFetcher(metadata, cb, vsg,
+                        fetchContext, true, decompressors,
+                        metadata.getClientMetadata(), 0L, metadata.topDontCompress,
+                        metadata.topCompatibilityMode.code, false, metadata.getResolvedURI(),
+                        true, clientContext);
+                sf.schedule(clientContext);
 
-                // register blocks
-                Metadata metadata2 = (Metadata) metadata.clone();
-                SplitFileSegmentKeys[] segmentKeys = metadata2.grabSegmentKeys();
-                for (int i = 0; i < segmentKeys.length; i++) {
-                    int dataBlocks = segmentKeys[i].getDataBlocks();
-                    int checkBlocks = segmentKeys[i].getCheckBlocks();
-                    log("segment_" + i + ": " + (dataBlocks + checkBlocks) +
-                            " (data=" + dataBlocks + ", check=" + checkBlocks + ")", level + 1);
-                    for (int j = 0; j < dataBlocks + checkBlocks; j++) {
-                        FreenetURI splitUri = segmentKeys[i].getKey(j, null, false).getURI();
-                        log("block: " + splitUri, level + 1);
-                        registerBlockUri(splitUri, (j == 0), (j < dataBlocks), level + 1);
+                // fetchWaiter.waitForCompletion();
+                while (cb.getDecompressedData() == null) { // workaround because in some cases fetchWaiter.waitForCompletion() never finished
+                    if (isInterrupted()) {
+                        return;
                     }
-                }
 
-                // create metadata from splitfile (if not simple splitfile)
-                if (!metadata.isSimpleSplitfile()) {
-                    // TODO: move fetch to net package
-                    FetchContext fetchContext = pr.getHLSimpleClient().getFetchContext();
-                    ClientContext clientContext = pr.getNode().clientCore.clientContext;
-                    FetchWaiter fetchWaiter = new FetchWaiter(plugin.getFreenetClient());
-                    List<COMPRESSOR_TYPE> decompressors = new LinkedList<>();
-                    if (metadata.isCompressed()) {
-                        log("is compressed: " + metadata.getCompressionCodec(), level + 1);
-                        decompressors.add(metadata.getCompressionCodec());
-                    } else {
-                        log("is not compressed", level + 1);
+                    if (!isActive()) {
+                        throw new FetchFailedException("Manifest cannot be fetched");
                     }
-                    SplitfileGetCompletionCallback cb = new SplitfileGetCompletionCallback(fetchWaiter);
-                    VerySimpleGetter vsg = new VerySimpleGetter((short) 2, null, plugin.getFreenetClient());
-                    SplitFileFetcher sf = new SplitFileFetcher(metadata, cb, vsg,
-                            fetchContext, true, decompressors,
-                            metadata.getClientMetadata(), 0L, metadata.topDontCompress,
-                            metadata.topCompatibilityMode.code, false, metadata.getResolvedURI(),
-                            true, clientContext);
-                    sf.schedule(clientContext);
 
-                    // fetchWaiter.waitForCompletion();
-                    while (cb.getDecompressedData() == null) { // workaround because in some cases fetchWaiter.waitForCompletion() never finished
-                        if (terminated) {
+                    synchronized (this) {
+                        try {
+                            wait(100);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
                             return;
                         }
-
-                        if (!isActive()) {
-                            throw new FetchException(FetchExceptionMode.UNKNOWN_SPLITFILE_METADATA, "Manifest cannot be fetched");
-                        }
-
-                        synchronized (this) {
-                            wait(100);
-                        }
                     }
-                    sf.cancel(clientContext);
-                    metadata = fetchManifest(cb.getDecompressedData(), null, null);
-                    parseMetadata(null, metadata, level + 1);
                 }
+                sf.cancel(clientContext);
+                metadata = fetchManifest(cb.getDecompressedData(), null, null);
+                parseMetadata(null, metadata, level + 1);
             }
-
-        } catch (FetchException e) {
-            throw e;
-        } catch (Exception e) {
-            plugin.log("Reinserter.parseMetadata(): " + e.getMessage());
         }
     }
 
@@ -879,18 +801,22 @@ public class Reinserter extends Thread {
         return plugin;
     }
 
-    public void incrementActiveSingleJobCount() {
-        activeSingleJobCount.incrementAndGet();
-    }
+    private static class FetchBlocksResult {
 
-    public void decrementActiveSingleJobCount() {
-        activeSingleJobCount.decrementAndGet();
-    }
+        private int successful = 0;
+        private int failed = 0;
 
-    private class FetchBlocksResult {
+        void addResult(boolean successful) {
+            if (successful) {
+                this.successful++;
+            } else {
+                failed++;
+            }
+        }
 
-        int successful = 0;
-        int failed = 0;
+        double calculatePersistenceRate() {
+            return (double) successful / (successful + failed);
+        }
     }
 
     private class SplitfileGetCompletionCallback implements GetCompletionCallback {
@@ -1038,32 +964,26 @@ public class Reinserter extends Thread {
         }
     }
 
-    private Metadata fetchManifest(FreenetURI uri, ARCHIVE_TYPE archiveType, String manifestName) {
-        try {
-
-            // init
-            uri = normalizeUri(uri);
-            assert uri != null;
-            if (uri.isCHK()) {
-                uri.getExtra()[2] = 0;  // deactivate control flag
-            }
-
-            // fetch raw data
-            FetchContext fetchContext = plugin.getFreenetClient().getFetchContext();
-            fetchContext.returnZIPManifests = true;
-            FetchWaiter fetchWaiter = new FetchWaiter(rc);
-            plugin.getFreenetClient().fetch(uri, -1, fetchWaiter, fetchContext); // TODO: move fetch to net package
-            FetchResult result = fetchWaiter.waitForCompletion();
-
-            return fetchManifest(result.asByteArray(), archiveType, manifestName);
-
-        } catch (FetchException | IOException e) {
-            plugin.log("Reinserter.fetchManifest(" + uri + "): " + e.getMessage());
-            return null;
+    private Metadata fetchManifest(FreenetURI uri, ARCHIVE_TYPE archiveType, String manifestName)
+            throws FetchException, IOException {
+        // init
+        uri = normalizeUri(uri);
+        assert uri != null;
+        if (uri.isCHK()) {
+            uri.getExtra()[2] = 0; // deactivate control flag
         }
+
+        // fetch raw data
+        FetchContext fetchContext = plugin.getFreenetClient().getFetchContext();
+        fetchContext.returnZIPManifests = true;
+        FetchWaiter fetchWaiter = new FetchWaiter(rc);
+        plugin.getFreenetClient().fetch(uri, -1, fetchWaiter, fetchContext); // TODO: move fetch to net package
+        FetchResult result = fetchWaiter.waitForCompletion();
+
+        return fetchManifest(result.asByteArray(), archiveType, manifestName);
     }
 
-    private Metadata fetchManifest(byte[] data, ARCHIVE_TYPE archiveType, String manifestName) {
+    private Metadata fetchManifest(byte[] data, ARCHIVE_TYPE archiveType, String manifestName) throws IOException {
         Metadata metadata = null;
         try (ByteArrayInputStream fetchedDataStream = new ByteArrayInputStream(data)) {
 
@@ -1133,9 +1053,6 @@ public class Reinserter extends Thread {
             }
             return metadata;
 
-        } catch (Exception e) {
-            plugin.log("Reinserter.fetchManifest(data): " + e.getMessage());
-            return null;
         }
     }
 
@@ -1145,10 +1062,11 @@ public class Reinserter extends Thread {
         FetchWaiter fetchWaiter = new FetchWaiter(rc);
 
         try {
-            plugin.getFreenetClient().fetch(uri, -1, fetchWaiter, fetchContext); // TODO: move fetch to net package
+            // TODO: move fetch to net package
+            plugin.getFreenetClient().fetch(uri, -1, fetchWaiter, fetchContext);
             fetchWaiter.waitForCompletion();
         } catch (freenet.client.FetchException e) {
-            if (e.getMode() == FetchExceptionMode.PERMANENT_REDIRECT) {
+            if (e.getMode() == FetchException.FetchExceptionMode.PERMANENT_REDIRECT) {
                 uri = updateUsk(e.newURI);
             }
         }
@@ -1157,141 +1075,82 @@ public class Reinserter extends Thread {
     }
 
     private FreenetURI normalizeUri(FreenetURI uri) {
-        try {
-
-            if (uri.isUSK()) {
-                uri = uri.sskForUSK();
-            }
-            if (uri.hasMetaStrings()) {
-                uri = uri.setMetaString(null);
-            }
-            return uri;
-
-        } catch (Exception e) {
-            plugin.log("Reinserter.normalizeUri(): " + e.getMessage(), 0);
-            return null;
+        if (uri.isUSK()) {
+            uri = uri.sskForUSK();
         }
+        if (uri.hasMetaStrings()) {
+            uri = uri.setMetaString(null);
+        }
+        return uri;
     }
 
     private void registerManifestUri(FreenetURI uri, int level) {
-        try {
-
-            uri = normalizeUri(uri);
-            if (manifestURIs.containsKey(uri)) {
-                log("-> already registered manifest", level, 2);
-            } else {
-                manifestURIs.put(uri, null);
-                if (level != -1) {
-                    log("-> registered manifest", level, 2);
-                }
+        uri = normalizeUri(uri);
+        if (manifestURIs.containsKey(uri)) {
+            log("-> already registered manifest", level, 2);
+        } else {
+            manifestURIs.put(uri, null);
+            if (level != -1) {
+                log("-> registered manifest", level, 2);
             }
-
-        } catch (Exception e) {
-            plugin.log("Reinserter.registerManifestUri(): " + e.getMessage(), 0);
         }
     }
 
     private void registerBlockUri(FreenetURI uri, boolean newSegment, boolean isDataBlock, int logTabLevel) {
-        try {
+        if (uri != null) { // uri is null if metadata is created from splitfile
 
-            if (uri != null) { // uri is null if metadata is created from splitfile
+            // no reinsertion for SSK but go to sublevel
+            if (!uri.isCHK()) {
+                log("-> no reinsertion of USK, SSK or KSK", logTabLevel, 2);
 
-                // no reinsertion for SSK but go to sublevel
-                if (!uri.isCHK()) {
-                    log("-> no reinsertion of USK, SSK or KSK", logTabLevel, 2);
+                // check if uri already reinserted during this session
+            } else if (blocks.containsKey(normalizeUri(uri))) {
+                log("-> already registered block", logTabLevel, 2);
 
-                    // check if uri already reinserted during this session
-                } else if (blocks.containsKey(normalizeUri(uri))) {
-                    log("-> already registered block", logTabLevel, 2);
-
-                    // register
-                } else {
-                    if (newSegment) {
-                        parsedSegmentId++;
-                        parsedBlockId = -1;
-                    }
-                    uri = normalizeUri(uri);
-                    blocks.put(uri, new Block(uri, parsedSegmentId, ++parsedBlockId, isDataBlock));
-                    log("-> registered block", logTabLevel, 2);
+                // register
+            } else {
+                if (newSegment) {
+                    parsedSegmentId++;
+                    parsedBlockId = -1;
                 }
-
+                uri = normalizeUri(uri);
+                blocks.put(uri, new Block(uri, parsedSegmentId, ++parsedBlockId, isDataBlock));
+                log("-> registered block", logTabLevel, 2);
             }
 
-        } catch (Exception e) {
-            plugin.log("Reinserter.registerBlockUri(): " + e.getMessage(), 0);
         }
     }
 
     public void registerBlockFetchSuccess(Block block) {
-        try {
-
-            segments.get(block.getSegmentId()).regFetchSuccess(block.isFetchSuccessful());
-
-        } catch (Exception e) {
-            plugin.log("Reinserter.registerBlockSuccess(): " + e.getMessage(), 0);
-        }
+        segments.get(block.getSegmentId()).regFetchSuccess(block.isFetchSuccessful());
     }
 
     public synchronized void updateSegmentStatistic(Segment segment, boolean success) {
-        try {
-
-            String successProp = plugin.getProp("success_segments_" + siteId);
-            if (success) {
-                successProp = successProp.substring(0, segment.getId()) + "1" + successProp.substring(segment.getId() + 1);
-            }
-            plugin.setProp("success_segments_" + siteId, successProp);
-            plugin.saveProp();
-
-        } catch (Exception e) {
-            plugin.log("Reinserter.updateSegmentStatistic(): " + e.getMessage(), 0);
+        String successProp = plugin.getProp("success_segments_" + siteId);
+        if (success) {
+            successProp = successProp.substring(0, segment.getId()) + "1" + successProp.substring(segment.getId() + 1);
         }
+        plugin.setProp("success_segments_" + siteId, successProp);
+        plugin.saveProp();
     }
 
     public synchronized void updateBlockStatistic(int id, int success, int failed) {
-        try {
-
-            String[] successProp = plugin.getProp("success_" + siteId).split(",");
-            successProp[id * 2] = String.valueOf(success);
-            successProp[id * 2 + 1] = String.valueOf(failed);
-            saveSuccessToProp(successProp);
-
-        } catch (Exception e) {
-            plugin.log("Reinserter.updateBlockStatistic(): " + e.getMessage(), 0);
-        }
+        String[] successProp = plugin.getProp("success_" + siteId).split(",");
+        successProp[id * 2] = String.valueOf(success);
+        successProp[id * 2 + 1] = String.valueOf(failed);
+        saveSuccessToProp(successProp);
     }
 
     private void saveSuccessToProp(String[] success) {
-        try {
-
-            StringBuilder newSuccess = new StringBuilder();
-            for (int i = 0; i < success.length; i++) {
-                if (i > 0) {
-                    newSuccess.append(",");
-                }
-                newSuccess.append(success[i]);
+        StringBuilder newSuccess = new StringBuilder();
+        for (int i = 0; i < success.length; i++) {
+            if (i > 0) {
+                newSuccess.append(",");
             }
-            plugin.setProp("success_" + siteId, newSuccess.toString());
-            plugin.saveProp();
-
-        } catch (Exception e) {
-            plugin.log("Reinserter.saveSuccessToProp(): " + e.getMessage(), 0);
+            newSuccess.append(success[i]);
         }
-    }
-
-    public synchronized void terminate() {
-        try {
-
-            terminated = true;
-            if (isActive() && isAlive()) {
-                plugin.log("stop reinserter (" + siteId + ")", 1);
-                log("*** stopped ***", 0);
-                plugin.setIntProp("active", -1);
-                plugin.saveProp();
-            }
-
-        } catch (Exception e) {
-            plugin.log("Reinserter.terminate(): " + e.getMessage(), 0);
-        }
+        plugin.setProp("success_" + siteId, newSuccess.toString());
+        plugin.saveProp();
     }
 
     public boolean isActive() {
@@ -1365,48 +1224,7 @@ public class Reinserter extends Thread {
         }
     }
 
-    public int getSiteId() {
-        return siteId;
-    }
-
     public ArrayList<Segment> getSegments() {
         return segments;
-    }
-
-    private class ActivityGuard extends Thread {
-
-        private final Reinserter reinserter;
-
-        ActivityGuard(Reinserter reinserter) {
-            this.reinserter = reinserter;
-            lastActivityTime = System.currentTimeMillis();
-        }
-
-        @Override
-        public synchronized void run() {
-            try {
-                this.setName("Keepalive - ActivityGuard");
-                while (!reinserter.terminated || reinserter.isActive()) {
-                    wait(1000);
-                }
-                reinserter.terminate();
-
-                long stopCheckBegin = System.currentTimeMillis();
-                while (reinserter.isAlive() && stopCheckBegin > (System.currentTimeMillis() - (10 * 60 * 1000))) {
-                    try {
-                        wait(100);
-                    } catch (InterruptedException ignored) {
-                    }
-                }
-
-                if (reinserter.terminated) {
-                    plugin.log("reinserter stopped (" + siteId + ")");
-                } else {
-                    plugin.log("reinserter not stopped - stop was indicated 10 minutes before (" + siteId + ")");
-                }
-            } catch (InterruptedException e) {
-                plugin.log("Reinserter.ActivityGuard.run(): " + e.getMessage(), 0);
-            }
-        }
     }
 }

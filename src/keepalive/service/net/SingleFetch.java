@@ -18,37 +18,36 @@
  */
 package keepalive.service.net;
 
-import freenet.client.FetchContext;
 import freenet.client.FetchException;
 import freenet.client.FetchResult;
-import freenet.client.HighLevelSimpleClientImpl;
 import freenet.keys.FreenetURI;
 import freenet.support.io.ArrayBucket;
 import keepalive.service.reinserter.Reinserter;
 import keepalive.model.Block;
 
 import java.io.IOException;
+import java.util.concurrent.Callable;
 
-public class SingleFetch extends SingleJob {
+public class SingleFetch extends SingleJob implements Callable<Boolean> {
 
-    private boolean persistenceCheck;
+    private final boolean persistenceCheck;
 
     public SingleFetch(Reinserter reinserter, Block block, boolean persistenceCheck) {
         super(reinserter, "fetch", block);
 
-        setName("KeepAlive SingleFetch");
         this.persistenceCheck = persistenceCheck;
     }
 
     @Override
-    public void run() {
-        super.run();
+    public Boolean call() {
+        Thread.currentThread().setName("KeepAlive SingleFetch");
         FetchResult fetchResult = null;
+        boolean fetchSuccessful = false;
 
         try {
 
             // init
-            HLSCIgnoreStore hlscIgnoreStore = new HLSCIgnoreStore(plugin.getFreenetClient());
+            HLSCIgnoreStore hlscIgnoreStore = HLSCIgnoreStore.getInstance(plugin.getFreenetClient());
 
             FreenetURI fetchUri = getUri();
             block.setFetchDone(false);
@@ -67,6 +66,10 @@ public class SingleFetch extends SingleJob {
                 block.setResultLog("-> fetch error: " + e.getMessage());
             }
 
+            if (Thread.currentThread().isInterrupted()) {
+                return false;
+            }
+
             // log / success flag
             if (block.getResultLog() == null) {
                 if (fetchResult == null) {
@@ -75,6 +78,7 @@ public class SingleFetch extends SingleJob {
                     block.setBucket(new ArrayBucket(fetchResult.asByteArray()));
                     block.setFetchSuccessful(true);
                     block.setResultLog("-> fetch successful");
+                    fetchSuccessful = true;
                 }
             }
 
@@ -83,26 +87,14 @@ public class SingleFetch extends SingleJob {
             block.setFetchDone(true);
 
         } catch (IOException e) {
-            plugin.log("SingleFetch.run(): " + e.getMessage(), 0);
+            log("SingleFetch.run(): " + e.getMessage(), 0);
         } finally {
             if (fetchResult != null && fetchResult.asBucket() != null) {
                 fetchResult.asBucket().free();
             }
             finish();
         }
-    }
 
-    private class HLSCIgnoreStore extends HighLevelSimpleClientImpl {
-
-        HLSCIgnoreStore(HighLevelSimpleClientImpl hlsc) {
-            super(hlsc);
-        }
-
-        @Override
-        public FetchContext getFetchContext() {
-            FetchContext fc = super.getFetchContext();
-            fc.ignoreStore = true;
-            return fc;
-        }
+        return fetchSuccessful;
     }
 }

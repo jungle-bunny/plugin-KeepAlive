@@ -25,12 +25,13 @@ import keepalive.web.AdminPage;
 import pluginbase.PluginBase;
 
 import java.io.File;
+import java.util.concurrent.*;
 
 public class Plugin extends PluginBase {
 
-    private static final String version = "0.3.3.8-pre5-RW";
+    private static final String version = "0.3.3.8-pre9-RW";
 
-    private Reinserter reinserter;
+    private Thread reinserterRunner;
     private long propSavingTimestamp;
     private HighLevelSimpleClientImpl hlsc;
 
@@ -88,29 +89,88 @@ public class Plugin extends PluginBase {
             }
 
         } catch (Exception e) {
-            log("Plugin.runPlugin(): " + e.getMessage(), 0);
+            log("Plugin.runPlugin Exception: " + e.getMessage(), 0);
         }
     }
 
-    public void startReinserter(int nSiteId) {
+    public void startReinserter(final int siteId) {
         try {
 
-            (new Reinserter(this, nSiteId)).start();
+            // stop previous reinserter
+            stopReinserter();
+
+            // start this one
+            synchronized (this) {
+                final Plugin plugin = this;
+                reinserterRunner = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        for (int id = siteId; ; ) {
+                            if (Thread.currentThread().isInterrupted()) {
+                                plugin.setIntProp("active", -1);
+                                plugin.saveProp();
+                                return;
+                            }
+
+                            setIntProp("active", id);
+                            saveProp();
+
+                            CountDownLatch latch = new CountDownLatch(1);
+                            Reinserter reinserter = new Reinserter(plugin, id, latch);
+                            reinserter.start();
+                            try {
+                                if (!latch.await(4, TimeUnit.HOURS)) {
+                                    reinserter.interrupt();
+                                    log("Terminated reinserter " + id + " by timeout");
+                                }
+                            } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt();
+                                reinserter.interrupt();
+                                return;
+                            }
+
+                            if (Thread.currentThread().isInterrupted()) {
+                                plugin.setIntProp("active", -1);
+                                plugin.saveProp();
+                                return;
+                            }
+
+                            // get next siteId
+                            int[] ids = getIds();
+                            int i = 0;
+                            for (; i < ids.length; i++) {
+                                if (id == ids[i]) {
+                                    break;
+                                }
+                            }
+                            if (i < ids.length - 1) {
+                                id = ids[i + 1];
+                            } else {
+                                id = ids[0];
+                            }
+                        }
+                    }
+                });
+                reinserterRunner.setName("KeepAlive Reinserter Runner");
+                reinserterRunner.start();
+            }
 
         } catch (Exception e) {
-            log("Plugin.startReinserter(): " + e.getMessage(), 0);
+            log("Plugin.startReinserter Exception: " + e.getMessage(), 0);
         }
     }
 
     public synchronized void stopReinserter() {
         try {
 
-            if (reinserter != null) {
-                reinserter.terminate();
+            if (reinserterRunner != null) {
+                reinserterRunner.interrupt();
+                setIntProp("active", -1);
+                saveProp();
             }
 
         } catch (Exception e) {
-            log("Plugin.stopReinserter(): " + e.getMessage(), 0);
+            log("Plugin.stopReinserter Exception: " + e.getMessage(), 0);
         }
     }
 
@@ -130,7 +190,7 @@ public class Plugin extends PluginBase {
             }
 
         } catch (Exception e) {
-            log("Plugin.getIds(): " + e.getMessage(), 0);
+            log("Plugin.getIds Exception: " + e.getMessage(), 0);
             return null;
         }
     }
@@ -169,7 +229,7 @@ public class Plugin extends PluginBase {
             return new int[]{success, failed, availableSegments};
 
         } catch (Exception e) {
-            log("Plugin.getSuccessValues(): " + e.getMessage(), 0);
+            log("Plugin.getSuccessValues Exception: " + e.getMessage(), 0);
             return null;
         }
     }
@@ -192,10 +252,8 @@ public class Plugin extends PluginBase {
 
     @Override
     public void terminate() {
+        stopReinserter();
         super.terminate();
-        if (reinserter != null) {
-            reinserter.terminate();
-        }
         log("plugin terminated", 0);
     }
 
@@ -203,24 +261,22 @@ public class Plugin extends PluginBase {
         return hlsc;
     }
 
-    public void setReinserter(Reinserter reinserter) {
-        this.reinserter = reinserter;
-    }
-
     public synchronized boolean isDuplicate(String uri) {
         try {
+
             for (int i : getIds()) {
                 if (getProp("uri_" + i).equals(uri)) {
                     return true;
                 }
             }
+
         } catch (Exception e) {
-            log("Plugin.isDuplicate(): " + e.getMessage(), 2);
+            log("Plugin.isDuplicate Exception: " + e.getMessage(), 2);
         }
         return false;
     }
 
-    public void removeUri(int id) throws Exception {
+    public void removeUri(int id) {
         // stop reinserter
         if (id == getIntProp("active")) {
             stopReinserter();
@@ -250,5 +306,51 @@ public class Plugin extends PluginBase {
         String ids = ("," + getProp("ids")).replaceAll("," + id + ",", ",");
         setProp("ids", ids.substring(1));
         saveProp();
+    }
+
+    @Override
+    public void setProp(String key, String value) {
+        try {
+            super.setProp(key, value);
+        } catch (Exception e) {
+            log(stackTraceToString(e));
+        }
+    }
+
+    @Override
+    public String getProp(String key) {
+        try {
+            return super.getProp(key);
+        } catch (Exception e) {
+            log(stackTraceToString(e));
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public void setIntProp(String key, int value) {
+        try {
+            super.setIntProp(key, value);
+        } catch (Exception e) {
+            log(stackTraceToString(e));
+        }
+    }
+
+    @Override
+    public int getIntProp(String key) {
+        try {
+            return super.getIntProp(key);
+        } catch (Exception e) {
+            log(stackTraceToString(e));
+            throw new RuntimeException(e);
+        }
+    }
+
+    public String stackTraceToString(Throwable e) {
+        StringBuilder sb = new StringBuilder();
+        for (StackTraceElement element : e.getStackTrace()) {
+            sb.append(element.toString()).append(System.lineSeparator());
+        }
+        return sb.toString();
     }
 }
