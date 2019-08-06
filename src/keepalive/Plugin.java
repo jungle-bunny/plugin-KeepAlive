@@ -75,6 +75,7 @@ public class Plugin extends PluginBase {
             if (getProp("log_links") == null) setIntProp("log_links", 1);
             if (getProp("log_utc") == null) setIntProp("log_utc", 1);
             if (getIntProp("log_utc") == 1) setTimezoneUTC();
+            if (getProp("single_url_timeslot") == null) setIntProp("single_url_timeslot", 4);
             saveProp();
 
             // build page and menu
@@ -107,8 +108,8 @@ public class Plugin extends PluginBase {
                     public void run() {
                         for (int id = siteId; ; ) {
                             if (Thread.currentThread().isInterrupted()) {
-                                plugin.setIntProp("active", -1);
-                                plugin.saveProp();
+                                setIntProp("active", -1);
+                                saveProp();
                                 return;
                             }
 
@@ -119,7 +120,7 @@ public class Plugin extends PluginBase {
                             Reinserter reinserter = new Reinserter(plugin, id, latch);
                             reinserter.start();
                             try {
-                                if (!latch.await(4, TimeUnit.HOURS)) {
+                                if (!latch.await(getIntProp("single_url_timeslot"), TimeUnit.HOURS)) {
                                     reinserter.interrupt();
                                     log("Terminated reinserter " + id + " by timeout");
                                 }
@@ -130,8 +131,8 @@ public class Plugin extends PluginBase {
                             }
 
                             if (Thread.currentThread().isInterrupted()) {
-                                plugin.setIntProp("active", -1);
-                                plugin.saveProp();
+                                setIntProp("active", -1);
+                                saveProp();
                                 return;
                             }
 
