@@ -574,8 +574,7 @@ public final class Reinserter extends Thread {
             plugin.log("reinsertion finished for " + plugin.getProp("uri_" + siteId), 1);
 
         } catch (Exception e) {
-            plugin.log("Reinserter.run(): " + e.getClass().getName() + " " + e.getMessage(), 0);
-            plugin.log(plugin.stackTraceToString(e));
+            plugin.log("Reinserter.run()", e);
         } finally {
             latch.countDown();
             log("stopped", 0);
