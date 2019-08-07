@@ -486,7 +486,12 @@ public final class Reinserter extends Thread {
             if (segments.size() > 0 && segments.get(0) != null) {
                 while (!(segments.get(0).isFinished())) {
                     synchronized (this) {
-                        this.wait(1000);
+                        try {
+                            this.wait(1000);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            return;
+                        }
                     }
 
                     if (isInterrupted()) {
@@ -506,7 +511,12 @@ public final class Reinserter extends Thread {
             if (doReinsertions) {
                 while (plugin.getIntProp("segment_" + siteId) != maxSegmentId) {
                     synchronized (this) {
-                        this.wait(1_000);
+                        try {
+                            this.wait(1_000);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            return;
+                        }
                     }
 
                     if (isInterrupted()) {
