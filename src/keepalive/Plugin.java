@@ -29,11 +29,12 @@ import java.util.concurrent.*;
 
 public class Plugin extends PluginBase {
 
-    private static final String version = "0.3.3.8-pre9-RW";
+    private static final String version = "0.3.3.8-RW";
 
     private Thread reinserterRunner;
     private long propSavingTimestamp;
     private HighLevelSimpleClientImpl hlsc;
+    private boolean stackTrace = "true".equals(getProp("stackTrace"));
 
     public Plugin() {
         super("KeepAlive", "KeepAlive", "prop.txt");
@@ -75,6 +76,8 @@ public class Plugin extends PluginBase {
             if (getProp("log_links") == null) setIntProp("log_links", 1);
             if (getProp("log_utc") == null) setIntProp("log_utc", 1);
             if (getIntProp("log_utc") == 1) setTimezoneUTC();
+            if (getProp("single_url_timeslot") == null) setIntProp("single_url_timeslot", 4);
+            if (getProp("stackTrace") == null) setProp("stackTrace", "false");
             saveProp();
 
             // build page and menu
@@ -107,8 +110,8 @@ public class Plugin extends PluginBase {
                     public void run() {
                         for (int id = siteId; ; ) {
                             if (Thread.currentThread().isInterrupted()) {
-                                plugin.setIntProp("active", -1);
-                                plugin.saveProp();
+                                setIntProp("active", -1);
+                                saveProp();
                                 return;
                             }
 
@@ -119,7 +122,7 @@ public class Plugin extends PluginBase {
                             Reinserter reinserter = new Reinserter(plugin, id, latch);
                             reinserter.start();
                             try {
-                                if (!latch.await(4, TimeUnit.HOURS)) {
+                                if (!latch.await(getIntProp("single_url_timeslot"), TimeUnit.HOURS)) {
                                     reinserter.interrupt();
                                     log("Terminated reinserter " + id + " by timeout");
                                 }
@@ -130,8 +133,8 @@ public class Plugin extends PluginBase {
                             }
 
                             if (Thread.currentThread().isInterrupted()) {
-                                plugin.setIntProp("active", -1);
-                                plugin.saveProp();
+                                setIntProp("active", -1);
+                                saveProp();
                                 return;
                             }
 
@@ -313,7 +316,7 @@ public class Plugin extends PluginBase {
         try {
             super.setProp(key, value);
         } catch (Exception e) {
-            log(stackTraceToString(e));
+            log("Set prop " + key + " " + value, e);
         }
     }
 
@@ -322,7 +325,7 @@ public class Plugin extends PluginBase {
         try {
             return super.getProp(key);
         } catch (Exception e) {
-            log(stackTraceToString(e));
+            log("Get prop " + key, e);
             throw new RuntimeException(e);
         }
     }
@@ -332,7 +335,7 @@ public class Plugin extends PluginBase {
         try {
             super.setIntProp(key, value);
         } catch (Exception e) {
-            log(stackTraceToString(e));
+            log("Set prop " + key + " " + value, e);
         }
     }
 
@@ -341,12 +344,20 @@ public class Plugin extends PluginBase {
         try {
             return super.getIntProp(key);
         } catch (Exception e) {
-            log(stackTraceToString(e));
+            log("Get prop " + key, e);
             throw new RuntimeException(e);
         }
     }
 
-    public String stackTraceToString(Throwable e) {
+    public void log(String info, Throwable e) {
+        String message = info + ": " + e.getClass().getName() + " " + e.getMessage();
+        if (stackTrace) {
+            message += System.lineSeparator() + stackTraceToString(e);
+        }
+        log(message);
+    }
+
+    private String stackTraceToString(Throwable e) {
         StringBuilder sb = new StringBuilder();
         for (StackTraceElement element : e.getStackTrace()) {
             sb.append(element.toString()).append(System.lineSeparator());

@@ -89,6 +89,8 @@ public final class Reinserter extends Thread {
             plugin.log("start reinserter for site " + uriProp + " (" + siteId + ")", 1);
             plugin.clearLog(plugin.getLogFilename(siteId));
             isActive(true);
+            long startedAt = System.currentTimeMillis();
+            long timeLeft = TimeUnit.HOURS.toMillis(plugin.getIntProp("single_url_timeslot"));
 
             FreenetURI uri = new FreenetURI(uriProp);
 
@@ -200,9 +202,11 @@ public final class Reinserter extends Thread {
             }
 
             // start reinsertion
-            int power = plugin.getIntProp("power");
             boolean doReinsertions = true;
-            for (int attempt = 0; attempt < 8; attempt++) { // TODO: move magic number to props/settings
+            timeLeft -= System.currentTimeMillis() - startedAt;
+            for (long timeSpent = 0; timeLeft - timeSpent > 0; timeSpent = System.currentTimeMillis() - startedAt, timeLeft -= timeSpent) {
+                startedAt = System.currentTimeMillis();
+
                 if (isInterrupted()) {
                     return;
                 }
@@ -250,7 +254,7 @@ public final class Reinserter extends Thread {
                         }
                     }
 
-                    ExecutorService executor = Executors.newFixedThreadPool(power);
+                    ExecutorService executor = Executors.newFixedThreadPool(plugin.getIntProp("power"));
                     FetchBlocksResult fetchBlocksResult = new FetchBlocksResult();
                     try {
                         for (Block requestedBlock : requestedBlocks) {
@@ -302,7 +306,7 @@ public final class Reinserter extends Thread {
                             }
                         }
 
-                        executor = Executors.newFixedThreadPool(power);
+                        executor = Executors.newFixedThreadPool(plugin.getIntProp("power"));
                         fetchBlocksResult = new FetchBlocksResult();
                         try {
                             for (Block requestedBlock : requestedBlocks) {
@@ -422,7 +426,7 @@ public final class Reinserter extends Thread {
                     log(segment, "starting reinsertion", 0, 1);
                     segment.initInsert();
 
-                    ExecutorService executor = Executors.newFixedThreadPool(power);
+                    ExecutorService executor = Executors.newFixedThreadPool(plugin.getIntProp("power"));
                     try {
                         for (int i = 0; i < segment.size(); i++) {
                             checkFinishedSegments();
@@ -465,7 +469,12 @@ public final class Reinserter extends Thread {
             if (segments.size() > 0 && segments.get(0) != null) {
                 while (!(segments.get(0).isFinished())) {
                     synchronized (this) {
-                        this.wait(1000);
+                        try {
+                            this.wait(1000);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            return;
+                        }
                     }
 
                     if (isInterrupted()) {
@@ -485,7 +494,12 @@ public final class Reinserter extends Thread {
             if (doReinsertions) {
                 while (plugin.getIntProp("segment_" + siteId) != maxSegmentId) {
                     synchronized (this) {
-                        this.wait(1_000);
+                        try {
+                            this.wait(1_000);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            return;
+                        }
                     }
 
                     if (isInterrupted()) {
@@ -543,8 +557,7 @@ public final class Reinserter extends Thread {
             plugin.log("reinsertion finished for " + plugin.getProp("uri_" + siteId), 1);
 
         } catch (Exception e) {
-            plugin.log("Reinserter.run(): " + e.getClass().getName() + " " + e.getMessage(), 0);
-            plugin.log(plugin.stackTraceToString(e));
+            plugin.log("Reinserter.run()", e);
         } finally {
             latch.countDown();
             log("stopped", 0);
