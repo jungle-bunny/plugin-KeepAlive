@@ -54,10 +54,7 @@ import java.util.zip.ZipInputStream;
 import keepalive.Plugin;
 import keepalive.model.Block;
 import keepalive.model.Segment;
-import keepalive.service.net.FetchFailedException;
-import keepalive.service.net.SingleFetch;
-import keepalive.service.net.SingleInsert;
-import keepalive.service.net.SingleJob;
+import keepalive.service.net.*;
 import org.apache.tools.tar.TarInputStream;
 
 public final class Reinserter extends Thread {
@@ -72,19 +69,6 @@ public final class Reinserter extends Thread {
     private int parsedSegmentId;
     private int parsedBlockId;
     private ArrayList<Segment> segments = new ArrayList<>();
-
-    private RequestClient rc = new RequestClient() {
-
-        @Override
-        public boolean persistent() {
-            return false;
-        }
-
-        @Override
-        public boolean realTimeFlag() {
-            return true;
-        }
-    };
 
     public Reinserter(Plugin plugin, int siteId, CountDownLatch latch) {
         this.plugin = plugin;
@@ -159,7 +143,6 @@ public final class Reinserter extends Thread {
                         return;
                     }
                     manifestURIs.remove(uri);
-
                 }
 
                 if (isInterrupted()) {
@@ -632,6 +615,8 @@ public final class Reinserter extends Thread {
 
         // constructs top level simple manifest (= first action on a new uri)
         if (metadata == null) {
+            FetchResult fetchResult = Client.fetch(uri, plugin.getFreenetClient()); // TODO: save top block
+
             metadata = fetchManifest(uri, null, null);
             if (metadata == null) {
                 log("no metadata", level);
@@ -966,19 +951,7 @@ public final class Reinserter extends Thread {
 
     private Metadata fetchManifest(FreenetURI uri, ARCHIVE_TYPE archiveType, String manifestName)
             throws FetchException, IOException {
-        // init
-        uri = normalizeUri(uri);
-        assert uri != null;
-        if (uri.isCHK()) {
-            uri.getExtra()[2] = 0; // deactivate control flag
-        }
-
-        // fetch raw data
-        FetchContext fetchContext = plugin.getFreenetClient().getFetchContext();
-        fetchContext.returnZIPManifests = true;
-        FetchWaiter fetchWaiter = new FetchWaiter(rc);
-        plugin.getFreenetClient().fetch(uri, -1, fetchWaiter, fetchContext); // TODO: move fetch to net package
-        FetchResult result = fetchWaiter.waitForCompletion();
+        FetchResult result = Client.fetch(uri, plugin.getFreenetClient());
 
         return fetchManifest(result.asByteArray(), archiveType, manifestName);
     }
@@ -1057,14 +1030,8 @@ public final class Reinserter extends Thread {
     }
 
     private FreenetURI updateUsk(FreenetURI uri) {
-        FetchContext fetchContext = plugin.getFreenetClient().getFetchContext();
-        fetchContext.returnZIPManifests = true;
-        FetchWaiter fetchWaiter = new FetchWaiter(rc);
-
         try {
-            // TODO: move fetch to net package
-            plugin.getFreenetClient().fetch(uri, -1, fetchWaiter, fetchContext);
-            fetchWaiter.waitForCompletion();
+            Client.fetch(uri, plugin.getFreenetClient());
         } catch (freenet.client.FetchException e) {
             if (e.getMode() == FetchException.FetchExceptionMode.PERMANENT_REDIRECT) {
                 uri = updateUsk(e.newURI);
@@ -1074,18 +1041,8 @@ public final class Reinserter extends Thread {
         return uri;
     }
 
-    private FreenetURI normalizeUri(FreenetURI uri) {
-        if (uri.isUSK()) {
-            uri = uri.sskForUSK();
-        }
-        if (uri.hasMetaStrings()) {
-            uri = uri.setMetaString(null);
-        }
-        return uri;
-    }
-
     private void registerManifestUri(FreenetURI uri, int level) {
-        uri = normalizeUri(uri);
+        uri = Client.normalizeUri(uri);
         if (manifestURIs.containsKey(uri)) {
             log("-> already registered manifest", level, 2);
         } else {
@@ -1104,7 +1061,7 @@ public final class Reinserter extends Thread {
                 log("-> no reinsertion of USK, SSK or KSK", logTabLevel, 2);
 
                 // check if uri already reinserted during this session
-            } else if (blocks.containsKey(normalizeUri(uri))) {
+            } else if (blocks.containsKey(Client.normalizeUri(uri))) {
                 log("-> already registered block", logTabLevel, 2);
 
                 // register
@@ -1113,7 +1070,7 @@ public final class Reinserter extends Thread {
                     parsedSegmentId++;
                     parsedBlockId = -1;
                 }
-                uri = normalizeUri(uri);
+                uri = Client.normalizeUri(uri);
                 blocks.put(uri, new Block(uri, parsedSegmentId, ++parsedBlockId, isDataBlock));
                 log("-> registered block", logTabLevel, 2);
             }
