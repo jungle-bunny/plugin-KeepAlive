@@ -20,6 +20,7 @@ package keepalive;
 
 import freenet.client.HighLevelSimpleClientImpl;
 import freenet.pluginmanager.PluginRespirator;
+import keepalive.repository.BlockRepository;
 import keepalive.repository.DB;
 import keepalive.service.reinserter.Reinserter;
 import keepalive.web.AdminPage;
@@ -73,7 +74,7 @@ public class Plugin extends PluginBase {
             // TODO: should be refactored to some standard way
             try (Connection connection = DB.getConnection();
                  Statement statement = connection.createStatement()) {
-                String sql = "CREATE TABLE IF NOT EXISTS `Block` (`uri` varchar(256) PRIMARY KEY, `data` VARBINARY(32768) not null)";
+                String sql = "CREATE TABLE IF NOT EXISTS Block (uri varchar(256) PRIMARY KEY, data VARBINARY(32768) not null)";
                 statement.executeUpdate(sql);
             } catch (Exception e) {
                 log(e.getMessage(), e);
@@ -311,6 +312,9 @@ public class Plugin extends PluginBase {
                 log("Plugin.removeUri(): remove key files was not successful.", 1);
             }
         }
+
+        // remove top block from db
+        BlockRepository.getInstance(this).delete(getProp("uri_" + id));
 
         // remove items
         removeProp("uri_" + id);

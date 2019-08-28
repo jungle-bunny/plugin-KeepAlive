@@ -982,7 +982,7 @@ public final class Reinserter extends Thread {
             }
 
             if (archiveType == null) {
-                //try to construct metadata directly
+                // try to construct metadata directly
                 try {
                     metadata = Metadata.construct(data);
                 } catch (MetadataParseException ignored) {
