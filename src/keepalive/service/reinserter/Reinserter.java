@@ -54,6 +54,7 @@ import java.util.zip.ZipInputStream;
 import keepalive.Plugin;
 import keepalive.model.Block;
 import keepalive.model.Segment;
+import keepalive.repository.BlockRepository;
 import keepalive.service.net.*;
 import org.apache.tools.tar.TarInputStream;
 
@@ -507,7 +508,9 @@ public final class Reinserter extends Thread {
                     }
 
                     if (!isActive()) { // TODO: this is a bypass
-                        plugin.log("Stop after stuck state (after healing)", 0);
+                        plugin.log("Stop after stuck state (after healing, prop segment_" + siteId + "=" +
+                                plugin.getIntProp("segment_" + siteId) + ", maxSegmentId=" + maxSegmentId + ")", 0);
+                        // TODO: probably segment_siteId prop should be incremented (switched to next segment)
                         return;
                     }
 
@@ -628,7 +631,8 @@ public final class Reinserter extends Thread {
 
         // constructs top level simple manifest (= first action on a new uri)
         if (metadata == null) {
-            FetchResult fetchResult = Client.fetch(uri, plugin.getFreenetClient()); // TODO: save top block
+            FetchResult fetchResult = Client.fetch(uri, plugin.getFreenetClient());
+            BlockRepository.getInstance(plugin).saveOrUpdate(uri.toString(), fetchResult.asByteArray());
 
             metadata = fetchManifest(uri, null, null);
             if (metadata == null) {

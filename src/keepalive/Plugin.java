@@ -20,11 +20,14 @@ package keepalive;
 
 import freenet.client.HighLevelSimpleClientImpl;
 import freenet.pluginmanager.PluginRespirator;
+import keepalive.repository.DB;
 import keepalive.service.reinserter.Reinserter;
 import keepalive.web.AdminPage;
 import pluginbase.PluginBase;
 
 import java.io.File;
+import java.sql.Connection;
+import java.sql.Statement;
 import java.util.concurrent.*;
 
 public class Plugin extends PluginBase {
@@ -64,6 +67,16 @@ public class Plugin extends PluginBase {
                 }
 
                 setProp("version", version);
+            }
+
+            // db migration
+            // TODO: should be refactored to some standard way
+            try (Connection connection = DB.getConnection();
+                 Statement statement = connection.createStatement()) {
+                String sql = "CREATE TABLE IF NOT EXISTS `Block` (`uri` varchar(256) PRIMARY KEY, `data` VARBINARY(32768) not null)";
+                statement.executeUpdate(sql);
+            } catch (Exception e) {
+                log(e.getMessage(), e);
             }
 
             // initial values

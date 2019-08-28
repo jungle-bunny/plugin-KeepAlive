@@ -7,9 +7,15 @@ repositories {
     mavenCentral()
 }
 
+configurations {
+    extraLibs
+}
+
 dependencies {
     compile files('../fred/build/libs/freenet.jar')
     compile group: 'org.apache.ant', name: 'ant', version: '1.10.5'
+    extraLibs group: 'com.h2database', name: 'h2', version: '1.4.199'
+    configurations.compile.extendsFrom(configurations.extraLibs)
 }
 
 sourceSets {
@@ -25,10 +31,13 @@ jar {
         attributes(
                 'Plugin-Main-Class': 'keepalive.Plugin')
     }
+    from {
+        configurations.extraLibs.collect { it.isDirectory() ? it : zipTree(it) }
+    }
 }
 
 processResources {
-    from ('src/resources/templates/') {
-        into 'resources/templates'
+    from ('src/resources') {
+        into 'resources'
     }
 }
