@@ -1,5 +1,6 @@
 package keepalive.repository;
 
+import java.io.File;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -7,7 +8,8 @@ import java.sql.SQLException;
 public class DB {
 
     private static final String JDBC_DRIVER = "org.h2.Driver";
-    private static final String DB_URL = "jdbc:h2:./KeepAlive/keppalive";
+    private static final String DB_URL = "jdbc:h2:" +
+            System.getProperty("user.dir") + File.separator + "KeepAlive" + File.separator + "keppalive";
     private static final String USER = "sa";
     private static final String PASS = "";
 

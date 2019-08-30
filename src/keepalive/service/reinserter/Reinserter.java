@@ -157,6 +157,23 @@ public final class Reinserter extends Thread {
                 plugin.saveProp();
             }
 
+            BlockRepository blockRepository = BlockRepository.getInstance(plugin);
+            FreenetURI topBlockUri = (FreenetURI) manifestURIs.keySet().toArray()[0];
+            if (blockRepository.lastAccessDiff(topBlockUri.toString()) > TimeUnit.HOURS.toMillis(24)) {
+                try {
+                    Client.fetch(topBlockUri, plugin.getFreenetClient());
+                } catch (FetchException e) {
+                    log(e.getShortMessage(), 0, 0);
+                    try {
+                        Client.insert(topBlockUri, blockRepository.findOne(topBlockUri.toString()), plugin.getFreenetClient());
+                        blockRepository.lastAccessUpdate(topBlockUri.toString());
+                        log("Successfully inserted top block", 0, 0);
+                    } catch (InsertException e1) {
+                        log(e1.getMessage(), 0, 0);
+                    }
+                }
+            }
+
             // max segment id
             int maxSegmentId = -1;
             for (Block block : blocks.values()) {

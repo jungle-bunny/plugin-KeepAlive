@@ -74,7 +74,10 @@ public class Plugin extends PluginBase {
             // TODO: should be refactored to some standard way
             try (Connection connection = DB.getConnection();
                  Statement statement = connection.createStatement()) {
-                String sql = "CREATE TABLE IF NOT EXISTS Block (uri varchar(256) PRIMARY KEY, data VARBINARY(32768) not null)";
+                String sql = "CREATE TABLE IF NOT EXISTS Block (" +
+                        "uri VARCHAR(256) PRIMARY KEY, " +
+                        "data VARBINARY(32768) not null, " +
+                        "last_access TIMESTAMP DEFAULT CURRENT_TIMESTAMP)";
                 statement.executeUpdate(sql);
             } catch (Exception e) {
                 log(e.getMessage(), e);

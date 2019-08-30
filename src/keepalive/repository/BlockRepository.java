@@ -10,10 +10,12 @@ public class BlockRepository {
 
     private static BlockRepository instance;
 
-    private static final String SQL_SAVE = "INSERT INTO Block VALUES (?, ?)";
-    private static final String SQL_FIND = "SELECT DATA FROM Block WHERE uri = ?";
-    private static final String SQL_UPDATE = "UPDATE Block set data = ? WHERE uri = ?";
+    private static final String SQL_SAVE = "INSERT INTO Block (uri, data) VALUES (?, ?)";
+    private static final String SQL_FIND = "SELECT data FROM Block WHERE uri = ?";
+    private static final String SQL_UPDATE = "UPDATE Block SET data = ? WHERE uri = ?";
     private static final String SQL_DELETE = "DELETE FROM Block WHERE uri = ?;";
+    private static final String SQL_LAST_ACCESS_DIFF = "SELECT TIMESTAMPDIFF(MILLISECOND, last_access, CURRENT_TIMESTAMP) FROM Block WHERE uri = ?";
+    private static final String SQL_LAST_ACCESS_UPDATE = "UPDATE Block SET last_access = CURRENT_TIMESTAMP WHERE uri = ?";
 
     private BlockRepository(Plugin plugin) {
         this.plugin = plugin;
@@ -77,6 +79,40 @@ public class BlockRepository {
     public void delete(String uri) {
         try (Connection connection = DB.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(SQL_DELETE)) {
+            preparedStatement.setString(1, uri);
+            preparedStatement.executeUpdate();
+        } catch (SQLException e) {
+            plugin.log(e.getMessage() + " " + uri, e);
+        }
+    }
+
+    public long lastAccessDiff(String uri) {
+        try (Connection connection = DB.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(SQL_LAST_ACCESS_DIFF)) {
+            preparedStatement.setString(1, uri);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                long diff = resultSet.getInt(1);
+
+                if (resultSet.next()) {
+                    plugin.log("Not unique uri: " + uri);
+                    return 0;
+                }
+
+                return diff;
+            } else {
+                return 0;
+            }
+        } catch (SQLException e) {
+            plugin.log(e.getMessage() + " " + uri, e);
+        }
+
+        return 0;
+    }
+
+    public void lastAccessUpdate(String uri) {
+        try (Connection connection = DB.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(SQL_LAST_ACCESS_UPDATE)) {
             preparedStatement.setString(1, uri);
             preparedStatement.executeUpdate();
         } catch (SQLException e) {

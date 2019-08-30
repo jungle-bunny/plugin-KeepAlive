@@ -3,6 +3,7 @@ package keepalive.service.net;
 import freenet.client.*;
 import freenet.keys.FreenetURI;
 import freenet.node.RequestClient;
+import freenet.support.io.ArrayBucket;
 
 public class Client {
 
@@ -32,6 +33,11 @@ public class Client {
         FetchWaiter fetchWaiter = new FetchWaiter(rc);
         hlsc.fetch(uri, -1, fetchWaiter, fetchContext);
         return fetchWaiter.waitForCompletion();
+    }
+
+    public static void insert(FreenetURI uri, byte[] data, HighLevelSimpleClientImpl hlsc) throws InsertException {
+        InsertBlock insert = new InsertBlock(new ArrayBucket(data), null, uri);
+        hlsc.insert(insert, false, null);
     }
 
     public static FreenetURI normalizeUri(FreenetURI uri) {
