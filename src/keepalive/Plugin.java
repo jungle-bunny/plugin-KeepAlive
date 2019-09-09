@@ -19,14 +19,17 @@
 package keepalive;
 
 import freenet.client.HighLevelSimpleClientImpl;
+import freenet.keys.FreenetURI;
 import freenet.pluginmanager.PluginRespirator;
 import keepalive.repository.BlockRepository;
 import keepalive.repository.DB;
+import keepalive.service.net.Client;
 import keepalive.service.reinserter.Reinserter;
 import keepalive.web.AdminPage;
 import pluginbase.PluginBase;
 
 import java.io.File;
+import java.net.MalformedURLException;
 import java.sql.Connection;
 import java.sql.Statement;
 import java.util.concurrent.*;
@@ -317,7 +320,12 @@ public class Plugin extends PluginBase {
         }
 
         // remove top block from db
-        BlockRepository.getInstance(this).delete(getProp("uri_" + id));
+        try {
+            BlockRepository.getInstance(this).delete(
+                    Client.normalizeUri(new FreenetURI(getProp("uri_" + id))).toString());
+        } catch (MalformedURLException e) {
+            log("Can't remove top block from db", e);
+        }
 
         // remove items
         removeProp("uri_" + id);
