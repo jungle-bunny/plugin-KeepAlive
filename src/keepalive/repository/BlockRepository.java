@@ -92,7 +92,7 @@ public class BlockRepository {
             preparedStatement.setString(1, uri);
             ResultSet resultSet = preparedStatement.executeQuery();
             if (resultSet.next()) {
-                long diff = resultSet.getInt(1);
+                long diff = resultSet.getLong(1);
 
                 if (resultSet.next()) {
                     plugin.log("Not unique uri: " + uri);

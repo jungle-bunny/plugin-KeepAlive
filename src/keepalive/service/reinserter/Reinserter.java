@@ -113,6 +113,34 @@ public final class Reinserter extends Thread {
                 }
             }
 
+            // check top block availability
+            BlockRepository blockRepository = BlockRepository.getInstance(plugin);
+            FreenetURI topBlockUri = Client.normalizeUri(uri.clone());
+            if (blockRepository.lastAccessDiff(topBlockUri.toString()) > TimeUnit.DAYS.toMillis(1)) {
+                try {
+                    Client.fetch(topBlockUri, plugin.getFreenetClient());
+                } catch (FetchException e) {
+                    log(e.getShortMessage(), 0, 0);
+                    try {
+                        FreenetURI insertUri = Client.insert(
+                                topBlockUri, blockRepository.findOne(topBlockUri.toString()), plugin.getFreenetClient());
+
+                        if (insertUri != null) {
+                            if (topBlockUri.equals(insertUri)) {
+                                log("Successfully inserted top block: " + insertUri.toString(), 0);
+                            } else {
+                                log("Top block insertion failed - different uri: " + insertUri.toString(), 0);
+                            }
+                        } else {
+                            log("Top block insertion failed (insertUri = null)", 0);
+                        }
+                    } catch (InsertException e1) {
+                        log(e1.getMessage(), 0, 0);
+                    }
+                }
+                blockRepository.lastAccessUpdate(topBlockUri.toString());
+            }
+
             // register uri
             registerManifestUri(uri, -1);
 
@@ -155,23 +183,6 @@ public final class Reinserter extends Thread {
                 saveBlockUris();
                 plugin.setIntProp("blocks_" + siteId, blocks.size());
                 plugin.saveProp();
-            }
-
-            BlockRepository blockRepository = BlockRepository.getInstance(plugin);
-            FreenetURI topBlockUri = (FreenetURI) manifestURIs.keySet().toArray()[0];
-            if (blockRepository.lastAccessDiff(topBlockUri.toString()) > TimeUnit.HOURS.toMillis(24)) {
-                try {
-                    Client.fetch(topBlockUri, plugin.getFreenetClient());
-                } catch (FetchException e) {
-                    log(e.getShortMessage(), 0, 0);
-                    try {
-                        Client.insert(topBlockUri, blockRepository.findOne(topBlockUri.toString()), plugin.getFreenetClient());
-                        blockRepository.lastAccessUpdate(topBlockUri.toString());
-                        log("Successfully inserted top block", 0, 0);
-                    } catch (InsertException e1) {
-                        log(e1.getMessage(), 0, 0);
-                    }
-                }
             }
 
             // max segment id

@@ -35,9 +35,9 @@ public class Client {
         return fetchWaiter.waitForCompletion();
     }
 
-    public static void insert(FreenetURI uri, byte[] data, HighLevelSimpleClientImpl hlsc) throws InsertException {
+    public static FreenetURI insert(FreenetURI uri, byte[] data, HighLevelSimpleClientImpl hlsc) throws InsertException {
         InsertBlock insert = new InsertBlock(new ArrayBucket(data), null, uri);
-        hlsc.insert(insert, false, null);
+        return hlsc.insert(insert, false, null);
     }
 
     public static FreenetURI normalizeUri(FreenetURI uri) {
