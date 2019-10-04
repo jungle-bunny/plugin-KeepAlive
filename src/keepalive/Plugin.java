@@ -122,6 +122,9 @@ public class Plugin extends PluginBase {
             // stop previous reinserter
             stopReinserter();
 
+            setIntProp("active", siteId);
+            saveProp();
+
             // start this one
             synchronized (this) {
                 final Plugin plugin = this;
@@ -130,8 +133,6 @@ public class Plugin extends PluginBase {
                     public void run() {
                         for (int id = siteId; ; ) {
                             if (Thread.currentThread().isInterrupted()) {
-                                setIntProp("active", -1);
-                                saveProp();
                                 return;
                             }
 
@@ -149,12 +150,6 @@ public class Plugin extends PluginBase {
                             } catch (InterruptedException e) {
                                 Thread.currentThread().interrupt();
                                 reinserter.interrupt();
-                                return;
-                            }
-
-                            if (Thread.currentThread().isInterrupted()) {
-                                setIntProp("active", -1);
-                                saveProp();
                                 return;
                             }
 

@@ -114,7 +114,7 @@ public class AdminPage extends PageBase {
 
             // info box
             addBox("Information",
-                    html("info", formPassword).replaceAll("#1", plugin.getVersion()));
+                    html("info", formPassword).replaceAll("#1", plugin.getVersion()), "page-kp-info");
 
         } catch (Exception e) {
             log("AdminPage.handleRequest(): " + e.getMessage());
@@ -142,7 +142,7 @@ public class AdminPage extends PageBase {
                     .append("\">clear</a></td></tr>");
         }
         html.append("</table>");
-        addBox("Lowest rate of blocks availability (monthly)", html.toString());
+        addBox("Lowest rate of blocks availability (monthly)", html.toString(), "page-kp-rate");
     }
 
     private void configurationBox() throws Exception {
@@ -152,7 +152,7 @@ public class AdminPage extends PageBase {
         html = new StringBuilder(html.toString().replaceAll("#3", getProp("splitfile_tolerance")));
         html = new StringBuilder(html.toString().replaceAll("#4", getProp("splitfile_test_size")));
         html = new StringBuilder(html.toString().replaceAll("#5", getProp("single_url_timeslot")));
-        addBox("Configuration", html.toString());
+        addBox("Configuration", html.toString(), "page-kp-config");
     }
 
     private void logBox() throws Exception {
@@ -174,9 +174,9 @@ public class AdminPage extends PageBase {
                             .replaceAll(" {2}", "&nbsp; &nbsp; "));
 
             if (getParam("master_log") != null) {
-                addBox("Master log", html.toString());
+                addBox("Master log", html.toString(), null);
             } else {
-                addBox("Log for " + getShortUri(getIntParam("log")), html.toString());
+                addBox("Log for " + getShortUri(getIntParam("log")), html.toString(), null);
             }
         }
     }
@@ -250,7 +250,7 @@ public class AdminPage extends PageBase {
         }
 
         html.append("</table>");
-        addBox("Add or remove a key", html.toString());
+        addBox("Add or remove a key", html.toString(), "page-kp-keys");
     }
 
     private void unsupportedKeysBox(int[] ids) throws Exception {
@@ -266,7 +266,7 @@ public class AdminPage extends PageBase {
 
         if (zeroBlockSites.length() > 0) {
             addBox("Unsupported keys",
-                    html("unsupported_keys", formPassword).replaceAll("#", zeroBlockSites.toString()));
+                    html("unsupported_keys", formPassword).replaceAll("#", zeroBlockSites.toString()), null);
         }
     }
 
@@ -305,7 +305,7 @@ public class AdminPage extends PageBase {
                     setIntProp("segment_" + id, -1);
                 }
             } catch (MalformedURLException e) {
-                addBox("URI not valid!", "You have typed:<br><br>" + uriOrig);
+                addBox("URI not valid!", "You have typed:<br><br>" + uriOrig, null);
             }
         }
     }
@@ -378,7 +378,7 @@ public class AdminPage extends PageBase {
         boolean isDuplicate = plugin.isDuplicate(uri);
 
         if (isDuplicate) {
-            addBox("Duplicate URI", "We are already keeping this key alive:<br><br>" + uri);
+            addBox("Duplicate URI", "We are already keeping this key alive:<br><br>" + uri, null);
         }
 
         return isDuplicate;

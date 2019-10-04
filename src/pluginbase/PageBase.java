@@ -18,6 +18,7 @@
  */
 package pluginbase;
 
+import freenet.l10n.NodeL10n;
 import pluginbase.de.todesbaum.util.freenet.fcp2.Message;
 import freenet.clients.http.InfoboxNode;
 import freenet.clients.http.PageNode;
@@ -33,6 +34,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URLConnection;
 import java.util.TreeMap;
 import java.util.ArrayList;
 
@@ -116,7 +118,7 @@ abstract public class PageBase extends Toadlet implements FredPluginL10n {
 				this.httpRequest = request;
 				handleRequest();
 			} else {
-				addBox("Access denied!", "Access to this page for hosts with full access rights only.");
+				addBox("Access denied!", "Access to this page for hosts with full access rights only.", null);
 			}
 
 			makePage(uri, ctx);
@@ -175,6 +177,32 @@ abstract public class PageBase extends Toadlet implements FredPluginL10n {
 	private void makePage(URI uri, ToadletContext ctx) throws Exception {
 		try {
 
+			String path = uri.getPath().substring(plugin.getPath().length());
+			if (path.startsWith("/static/")) {
+				path = "/resources" + path;
+				try (InputStream inputStream = getClass()
+						.getResourceAsStream(path)) {
+					if (inputStream == null) {
+						this.sendErrorPage(ctx, 404,
+								NodeL10n.getBase().getString("StaticToadlet.pathNotFoundTitle"),
+								NodeL10n.getBase().getString("StaticToadlet.pathNotFound"));
+						return;
+					}
+
+					String mimeType = URLConnection.guessContentTypeFromStream(inputStream);
+
+					ByteArrayOutputStream content = new ByteArrayOutputStream();
+					int len;
+					byte[] contentBytes = new byte[1024];
+					while ((len = inputStream.read(contentBytes)) != -1) {
+						content.write(contentBytes, 0, len);
+					}
+
+					writeReply(ctx, 200, mimeType, "", content.toByteArray(), 0, content.size());
+					return;
+				}
+			}
+
 			page = plugin.pagemaker.getPageNode(strPageTitle, ctx);
 
 			// refresh page
@@ -188,6 +216,10 @@ abstract public class PageBase extends Toadlet implements FredPluginL10n {
 				page.headNode.addChild("meta", new String[]{"http-equiv", "content"},
 						new String[]{"refresh", nRefreshPeriod + ";URL=" + strRefreshTarget});
 			}
+
+			page.headNode.addChild("link",
+					new String[]{"rel", "href", "type"},
+					new String[]{"stylesheet", "static/style.css", "text/css"});
 
 			// boxes
 			for (HTMLNode box : vBoxes) {
@@ -229,12 +261,15 @@ abstract public class PageBase extends Toadlet implements FredPluginL10n {
 	}
 
 	// methods to build the page
-	protected void addBox(String strTitle, String strHtmlBody) {
+	protected void addBox(String title, String htmlBody, String id) {
 		try {
 
-			InfoboxNode box = plugin.pagemaker.getInfobox(strTitle);
-			strHtmlBody = strHtmlBody.replaceAll("'", "\"");
-			box.content.addChild("%", strHtmlBody);
+			InfoboxNode box = plugin.pagemaker.getInfobox(title);
+			if (id != null) {
+				box.outer.addAttribute("id", id);
+			}
+			htmlBody = htmlBody.replaceAll("'", "\"");
+			box.content.addChild("%", htmlBody);
 			vBoxes.add(box.outer);
 
 		} catch (Exception e) {
@@ -248,11 +283,11 @@ abstract public class PageBase extends Toadlet implements FredPluginL10n {
 							 .getResourceAsStream("/resources/templates/" + name + ".html")) {
 
 			ByteArrayOutputStream content = new ByteArrayOutputStream();
-
 			int len;
 			byte[] contentBytes = new byte[1024];
-			while ((len = stream.read(contentBytes)) != -1)
+			while ((len = stream.read(contentBytes)) != -1) {
 				content.write(contentBytes, 0, len);
+			}
 
 			return content.toString(UTF_8.name()).replaceAll("\\$\\{formPassword}", formPassword);
 		} catch (IOException e) {

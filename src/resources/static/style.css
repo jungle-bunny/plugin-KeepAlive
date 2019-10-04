@@ -1,0 +1,195 @@
+/*** General ***/
+textarea {
+  max-width: 50%;
+  width: 100%;
+}
+
+input,
+select {
+  margin: 1em .5em 1em 0;
+  padding: .5em .5em .5em .5em;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  -webkit-border-radius: 4px;
+    -moz-border-radius: 4px;
+      border-radius: 4px;
+}
+
+input[type="text"] {
+  max-width: 800px;
+  width: 100%;
+  -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+      box-sizing: border-box;
+}
+
+.infobox-content input[name='search'] {
+  max-width: 800px;
+}
+
+#statusbar-container {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 18;
+  color: #808080;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  border-top-style: solid;
+  border-top-width: 1px;
+}
+
+#statusbar {
+  text-align: center;
+}
+
+#statusbar > div {
+  display: inline-block;
+  font-size: 1em;
+  font-weight: bold;
+  vertical-align: bottom;
+}
+
+div#content {
+  position: relative;
+  top: 5px;
+  left: 0;
+  padding: 0 15px 3em;
+}
+
+#page div#content {
+  top: 0 !important;
+  margin-top: 0;
+}
+
+
+/*** Add or remove a key section ***/
+#page-kp-keys form {
+  overflow: hidden;
+}
+
+#page-kp-keys form textarea {
+  float: left;
+}
+
+#page-kp-keys form input[type="submit"] {
+  float: left;
+  margin: 0 1em;
+}
+
+#page-kp-keys table {
+  margin-top: 1em;
+}
+
+#page-kp-keys table tr td {
+  padding: 1px 3px;
+}
+
+#page-kp-keys table tr td:first-child {
+  word-break: break-all;
+}
+
+
+/*** Lowest rate of blocks availability section ***/
+#page-kp-rate table tr td {
+  padding: 1px 3px;
+}
+
+#page-kp-rate table tr td:first-child {
+  word-break: break-all;
+}
+
+
+/*
+ *
+ * Media query
+ *
+ */
+@media (max-width: 991px) {
+  /* Add or remove a key section */
+  #page-kp-keys form {
+    float: left;
+    clear: both;
+    overflow: visible;
+  }
+
+  #page-kp-keys form input[type="submit"] {
+    margin: 1em 0 0;
+    clear: both;
+  }
+
+  #page-kp-keys table {
+    display: block;
+    overflow-x: auto;
+    clear: both;
+    white-space: nowrap;
+  }
+
+  #page-kp-keys table tr th {
+    padding: 2px 5px;
+  }
+
+  #page-kp-keys table tr td {
+    padding: 2px 5px;
+  }
+}
+
+@media (max-width: 700px) {
+  /* General */
+  textarea {
+    max-width: 100%;
+  }
+
+  div#content {
+    padding-bottom: 6em;
+  }
+
+  #bookmarks table tbody {
+    padding: 0;
+  }
+
+  .infobox-content {
+    padding: 0.5em;
+  }
+
+  #searchbar form[name="searchform"] > div {
+    clear: both;
+    margin: 20px 0 0 !important;
+  }
+
+  .column > tbody > tr {
+    flex-direction: column;
+  }
+
+  .config li {
+    flex-direction: column;
+  }
+
+  .config li span:last-child {
+    max-width: 100%;
+  }
+
+  /* Lowest rate of blocks availability section */
+  #page-kp-rate table {
+    display: block;
+    overflow-x: auto;
+    clear: both;
+    white-space: nowrap;
+  }
+
+  #page-kp-rate table tr th {
+    padding: 2px 5px;
+  }
+
+  #page-kp-rate table tr td {
+    padding: 2px 5px;
+  }
+}
+
+@media (max-width: 420px) {
+  /* General */
+  div#content {
+    padding-bottom: 8em;
+  }
+}
