@@ -27,42 +27,6 @@ input[type="text"] {
   max-width: 800px;
 }
 
-#statusbar-container {
-  position: fixed;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 18;
-  color: #808080;
-  border-bottom-style: solid;
-  border-bottom-width: 1px;
-  border-top-style: solid;
-  border-top-width: 1px;
-}
-
-#statusbar {
-  text-align: center;
-}
-
-#statusbar > div {
-  display: inline-block;
-  font-size: 1em;
-  font-weight: bold;
-  vertical-align: bottom;
-}
-
-div#content {
-  position: relative;
-  top: 5px;
-  left: 0;
-  padding: 0 15px 3em;
-}
-
-#page div#content {
-  top: 0 !important;
-  margin-top: 0;
-}
-
 
 /*** Add or remove a key section ***/
 #page-kp-keys form {
