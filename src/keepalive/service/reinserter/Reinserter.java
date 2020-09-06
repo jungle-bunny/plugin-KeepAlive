@@ -934,7 +934,7 @@ public final class Reinserter extends Thread {
         private final FreenetURI uri;
 
         VerySimpleGetter(short priorityClass, FreenetURI uri, RequestClient rc) {
-            super(priorityClass, new FakeCallback(rc));
+            super(priorityClass, rc);
             this.uri = uri;
         }
 
