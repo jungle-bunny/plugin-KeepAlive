@@ -36,7 +36,7 @@ import java.util.concurrent.*;
 
 public class Plugin extends PluginBase {
 
-    private static final String version = "0.3.3.10-RW";
+    private static final String version = "0.3.3.11-RW";
 
     private Thread reinserterRunner;
     private long propSavingTimestamp;
