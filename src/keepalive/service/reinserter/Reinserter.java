@@ -506,6 +506,7 @@ public final class Reinserter extends Thread {
 
         } catch (Exception e) {
             plugin.log("Reinserter.run()", e);
+            plugin.log(e.getStackTrace()[0].toString());
         } finally {
             latch.countDown();
             log("stopped", 0);
@@ -513,7 +514,7 @@ public final class Reinserter extends Thread {
         }
     }
     
-    private FetchBlocksResult fetchBlocks(Segment segment, ArrayList<Block> requestedBlocks) throws ExecutionException {
+    private FetchBlocksResult fetchBlocks(Segment segment, ArrayList<Block> requestedBlocks) throws Exception {
         ExecutorService executor = Executors.newFixedThreadPool(plugin.getIntProp("power"));
         FetchBlocksResult fetchBlocksResult = new FetchBlocksResult();
         try {
@@ -555,10 +556,11 @@ public final class Reinserter extends Thread {
             boolean done = executor.awaitTermination(1, TimeUnit.HOURS);
             if (!done) {
                 log(segment, "<b>fetchBlocks failed</b>", 0);
+                throw new Exception("fetching failed within allotted time");
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            return null;
+            throw new Exception("thread interrupted");
         } finally {
             if (!executor.isShutdown()) {
                 executor.shutdownNow();
@@ -567,7 +569,7 @@ public final class Reinserter extends Thread {
         return fetchBlocksResult;
     }
 
-    private void insertBlocks(Segment segment) {
+    private void insertBlocks(Segment segment) throws Exception {
         log(segment, "starting reinsertion", 0, 1);
         segment.initInsert();
 
@@ -617,11 +619,11 @@ public final class Reinserter extends Thread {
             boolean done = executor.awaitTermination(1, TimeUnit.HOURS);
             if (!done) {
                 log(segment, "<b>reinsertion failed</b>", 0);
-                return;
+                throw new Exception("insertion failed within allotted time");
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            return;
+            throw new Exception("thread interrupted");
         } finally {
             if (!executor.isShutdown()) {
                 executor.shutdownNow();
