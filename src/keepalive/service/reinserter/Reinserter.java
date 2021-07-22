@@ -282,30 +282,8 @@ public final class Reinserter extends Thread {
                             requestedBlocks.add(segment.getBlock(i));
                         }
                     }
-
-                    ExecutorService executor = Executors.newFixedThreadPool(plugin.getIntProp("power"));
-                    FetchBlocksResult fetchBlocksResult = new FetchBlocksResult();
-                    try {
-                        for (Block requestedBlock : requestedBlocks) {
-                            // fetch a block
-                            SingleFetch singleFetch = new SingleFetch(this, requestedBlock, true);
-                            Future<Boolean> fetchFuture = executor.submit(singleFetch);
-                            fetchBlocksResult.addResult(fetchFuture.get());
-                        }
-                        executor.shutdown();
-                        boolean done = executor.awaitTermination(1, TimeUnit.HOURS);
-                        if (!done) {
-                            log(segment, "<b>availability check failed</b>", 0);
-                            return;
-                        }
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        return;
-                    } finally {
-                        if (!executor.isShutdown()) {
-                            executor.shutdownNow();
-                        }
-                    }
+                    
+                    FetchBlocksResult fetchBlocksResult = fetchBlocks(segment, requestedBlocks);
 
                     double persistenceRate = fetchBlocksResult.calculatePersistenceRate();
                     if (persistenceRate >= (double) plugin.getIntProp("splitfile_tolerance") / 100) {
@@ -322,7 +300,7 @@ public final class Reinserter extends Thread {
                     } else {
                         log(segment, "<b>availability of segment not ok: " +
                                 ((int) (persistenceRate * 100)) + "% (approximated)</b>", 0, 1);
-                        log(segment, "-> fetch all available blocks now", 0, 1);
+                        log(segment, "-> fetch all available blocks now (n=" + segment.size() + ")", 0, 1);
                     }
 
                     // get all available blocks and heal the segment
@@ -335,32 +313,7 @@ public final class Reinserter extends Thread {
                             }
                         }
 
-                        executor = Executors.newFixedThreadPool(plugin.getIntProp("power"));
-                        fetchBlocksResult = new FetchBlocksResult();
-                        try {
-                            for (Block requestedBlock : requestedBlocks) {
-                                // fetch next block that has not been fetched yet
-                                if (requestedBlock.isFetchInProcess()) {
-                                    SingleFetch singleFetch = new SingleFetch(this, requestedBlock, true);
-                                    Future<Boolean> fetchFuture = executor.submit(singleFetch);
-                                    fetchBlocksResult.addResult(fetchFuture.get());
-                                }
-                            }
-
-                            executor.shutdown();
-                            boolean done = executor.awaitTermination(1, TimeUnit.HOURS);
-                            if (!done) {
-                                log(segment, "<b>get all available blocks failed</b>", 0);
-                                return;
-                            }
-                        } catch (InterruptedException e) {
-                            Thread.currentThread().interrupt();
-                            return;
-                        } finally {
-                            if (!executor.isShutdown()) {
-                                executor.shutdownNow();
-                            }
-                        }
+                        fetchBlocksResult = fetchBlocks(segment, requestedBlocks);
 
                         persistenceRate = fetchBlocksResult.calculatePersistenceRate();
                         if (persistenceRate >= (double) plugin.getIntProp("splitfile_tolerance") / 100.0) {
@@ -451,43 +404,7 @@ public final class Reinserter extends Thread {
 
                 // start reinsertion
                 if (doReinsertions) {
-
-                    log(segment, "starting reinsertion", 0, 1);
-                    segment.initInsert();
-
-                    ExecutorService executor = Executors.newFixedThreadPool(plugin.getIntProp("power"));
-                    try {
-                        for (int i = 0; i < segment.size(); i++) {
-                            checkFinishedSegments();
-                            isActive(true);
-                            if (segment.size() > 1) {
-                                if (segment.getBlock(i).isFetchSuccessful()) {
-                                    segment.regFetchSuccess(true);
-                                } else {
-                                    segment.regFetchSuccess(false);
-                                    SingleInsert singleInsert = new SingleInsert(this, segment.getBlock(i));
-                                    executor.submit(singleInsert);
-                                }
-                            } else {
-                                SingleInsert singleInsert = new SingleInsert(this, segment.getBlock(i));
-                                executor.submit(singleInsert);
-                            }
-                        }
-                        executor.shutdown();
-                        boolean done = executor.awaitTermination(1, TimeUnit.HOURS);
-                        if (!done) {
-                            log(segment, "<b>reinsertion failed</b>", 0);
-                            return;
-                        }
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        return;
-                    } finally {
-                        if (!executor.isShutdown()) {
-                            executor.shutdownNow();
-                        }
-                    }
-
+                    insertBlocks(segment);
                 }
 
                 // check if segments are finished
@@ -593,6 +510,122 @@ public final class Reinserter extends Thread {
             latch.countDown();
             log("stopped", 0);
             plugin.log("reinserter stopped (" + siteId + ")");
+        }
+    }
+    
+    private FetchBlocksResult fetchBlocks(Segment segment, ArrayList<Block> requestedBlocks) throws ExecutionException {
+        ExecutorService executor = Executors.newFixedThreadPool(plugin.getIntProp("power"));
+        FetchBlocksResult fetchBlocksResult = new FetchBlocksResult();
+        try {
+            List<Future<Boolean>> fetchFutures = new ArrayList<Future<Boolean>>();
+            for (Block requestedBlock : requestedBlocks) {
+                // fetch next block that has not been fetched yet
+                if (!requestedBlock.isFetchInProgress()) {
+                    continue;
+                }
+                SingleFetch singleFetch = new SingleFetch(this, requestedBlock, true);
+                Future<Boolean> fetchFuture = executor.submit(singleFetch);
+                fetchFutures.add(fetchFuture);
+            }
+            while (fetchFutures.size() > 0) {
+                Boolean success = false;
+                for (Future<Boolean> fetchFuture : fetchFutures) {
+                    if (fetchFuture.isDone()) {
+                        fetchBlocksResult.addResult(fetchFuture.get());
+                        fetchFutures.remove(fetchFuture);
+                        success = true;
+
+                        int finished = fetchBlocksResult.failed+fetchBlocksResult.successful;
+                        int logInterval = Math.max(1, requestedBlocks.size() / 8);
+                        if (finished % logInterval == 0) {
+                            String log = (finished) + "/" + String.valueOf(requestedBlocks.size()) +
+                                    " blocks fetched (" + (fetchBlocksResult.successful) + "/" +
+                                    (fetchBlocksResult.failed) + ", " +
+                                    ((int) (fetchBlocksResult.calculatePersistenceRate() * 100)) + "%)";
+                            log(segment.getId(), log, 1, 1);
+                        }
+                        break;
+                    }
+                }
+                if (!success) {
+                    Thread.sleep(1000);
+                }
+            }
+            executor.shutdown();
+            boolean done = executor.awaitTermination(1, TimeUnit.HOURS);
+            if (!done) {
+                log(segment, "<b>fetchBlocks failed</b>", 0);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return null;
+        } finally {
+            if (!executor.isShutdown()) {
+                executor.shutdownNow();
+            }
+        }
+        return fetchBlocksResult;
+    }
+
+    private void insertBlocks(Segment segment) {
+        log(segment, "starting reinsertion", 0, 1);
+        segment.initInsert();
+
+        ExecutorService executor = Executors.newFixedThreadPool(plugin.getIntProp("power"));
+        try {
+            List<Future<?>> insertFutures = new ArrayList<Future<?>>();
+            for (int i = 0; i < segment.size(); i++) {
+                checkFinishedSegments();
+                isActive(true);
+                if (segment.size() > 1) {
+                    if (segment.getBlock(i).isFetchSuccessful()) {
+                        segment.regFetchSuccess(true);
+                    } else {
+                        segment.regFetchSuccess(false);
+                        SingleInsert singleInsert = new SingleInsert(this, segment.getBlock(i));
+                        insertFutures.add(executor.submit(singleInsert));
+                    }
+                } else {
+                    SingleInsert singleInsert = new SingleInsert(this, segment.getBlock(i));
+                    insertFutures.add(executor.submit(singleInsert));
+                }
+            }
+            int totalInserts = insertFutures.size();
+            while (insertFutures.size() > 0) {
+                boolean success = false;
+                for (Future<?> insertFuture : insertFutures) {
+                    if (insertFuture.isDone()) {
+                        insertFutures.remove(insertFuture);
+                        success = true;
+
+                        int completed = totalInserts - insertFutures.size();
+                        int logInterval = Math.max(1, totalInserts / 8);
+                        if (completed % logInterval == 0) {
+                            String log = (completed) + "/" + String.valueOf(totalInserts) +
+                                    " blocks inserted (" + (100 * completed / totalInserts) + "%)";
+                            log(segment.getId(), log, 1, 1);
+                        }
+
+                        break;
+                    }
+                }
+                if (!success) {
+                    Thread.sleep(1000);
+                }
+            }
+            executor.shutdown();
+            boolean done = executor.awaitTermination(1, TimeUnit.HOURS);
+            if (!done) {
+                log(segment, "<b>reinsertion failed</b>", 0);
+                return;
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return;
+        } finally {
+            if (!executor.isShutdown()) {
+                executor.shutdownNow();
+            }
         }
     }
 
@@ -738,7 +771,7 @@ public final class Reinserter extends Thread {
                         " (data=" + dataBlocks + ", check=" + checkBlocks + ")", level + 1);
                 for (int j = 0; j < dataBlocks + checkBlocks; j++) {
                     FreenetURI splitUri = segmentKeys[i].getKey(j, null, false).getURI();
-                    log("block: " + splitUri, level + 1);
+                    log("block: " + splitUri, level + 1, 2);
                     registerBlockUri(splitUri, (j == 0), (j < dataBlocks), level + 1);
                 }
             }
@@ -833,8 +866,8 @@ public final class Reinserter extends Thread {
 
     private static class FetchBlocksResult {
 
-        private int successful = 0;
-        private int failed = 0;
+        int successful = 0;
+        int failed = 0;
 
         void addResult(boolean successful) {
             if (successful) {
@@ -842,6 +875,7 @@ public final class Reinserter extends Thread {
             } else {
                 failed++;
             }
+
         }
 
         double calculatePersistenceRate() {

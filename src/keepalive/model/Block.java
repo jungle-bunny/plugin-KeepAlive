@@ -65,7 +65,7 @@ public class Block {
         return dataBlock;
     }
 
-    public boolean isFetchInProcess() {
+    public boolean isFetchInProgress() {
         return !fetchDone;
     }
 

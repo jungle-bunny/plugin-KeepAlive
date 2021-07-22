@@ -74,8 +74,8 @@ public abstract class SingleJob {
                 firstLog = "<b>" + firstLog + "</b>";
                 block.setResultLog("<b>" + block.getResultLog() + "</b>");
             }
-            log(firstLog);
-            log(block.getResultLog());
+            log(firstLog, 2);
+            log(block.getResultLog(), 2);
         }
     }
 
