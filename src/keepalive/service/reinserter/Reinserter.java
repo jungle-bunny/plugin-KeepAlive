@@ -504,9 +504,15 @@ public final class Reinserter extends Thread {
             log("*** reinsertion finished ***", 0, 0);
             plugin.log("reinsertion finished for " + plugin.getProp("uri_" + siteId), 1);
 
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            plugin.log("Thread interrupted");
         } catch (Exception e) {
             plugin.log("Reinserter.run()", e);
-            plugin.log(e.getStackTrace()[0].toString());
+            // let's find some of these mystery NPEs
+            for (int i = 0; i < Math.min(3, e.getStackTrace().length); i++) {
+                plugin.log("    " + e.getStackTrace()[i].toString());
+            }
         } finally {
             latch.countDown();
             log("stopped", 0);
@@ -514,7 +520,7 @@ public final class Reinserter extends Thread {
         }
     }
     
-    private FetchBlocksResult fetchBlocks(Segment segment, ArrayList<Block> requestedBlocks) throws Exception {
+    private FetchBlocksResult fetchBlocks(Segment segment, ArrayList<Block> requestedBlocks) throws InterruptedException, Exception {
         ExecutorService executor = Executors.newFixedThreadPool(plugin.getIntProp("power"));
         FetchBlocksResult fetchBlocksResult = new FetchBlocksResult();
         try {
@@ -558,9 +564,6 @@ public final class Reinserter extends Thread {
                 log(segment, "<b>fetchBlocks failed</b>", 0);
                 throw new Exception("fetching failed within allotted time");
             }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new Exception("thread interrupted");
         } finally {
             if (!executor.isShutdown()) {
                 executor.shutdownNow();
@@ -569,7 +572,7 @@ public final class Reinserter extends Thread {
         return fetchBlocksResult;
     }
 
-    private void insertBlocks(Segment segment) throws Exception {
+    private void insertBlocks(Segment segment) throws InterruptedException, Exception {
         log(segment, "starting reinsertion", 0, 1);
         segment.initInsert();
 
@@ -621,9 +624,6 @@ public final class Reinserter extends Thread {
                 log(segment, "<b>reinsertion failed</b>", 0);
                 throw new Exception("insertion failed within allotted time");
             }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new Exception("thread interrupted");
         } finally {
             if (!executor.isShutdown()) {
                 executor.shutdownNow();
