@@ -330,6 +330,15 @@ public final class Reinserter extends Thread {
                         } else {
                             log(segment, "<b>availability of segment not ok: " +
                                     ((int) (persistenceRate * 100)) + "% (exact)</b>", 0, 1);
+
+                            // move on in the event of a dead segment, file is dying
+                            if (persistenceRate < 0.5) {
+                                log(segment, "<b>-> dead segment detected, moving on will resume on next pass.</b>", 0, 1);
+                                updateSegmentStatistic(segment, false);
+                                segment.setHealingNotPossible(true);
+                                checkFinishedSegments();
+                                return;
+                            }
                         }
                     }
 
