@@ -283,10 +283,66 @@ public final class Reinserter extends Thread {
                         }
                     }
                     
-                    FetchBlocksResult fetchBlocksResult = fetchBlocks(segment, requestedBlocks);
+                    ExecutorService executor = Executors.newFixedThreadPool(plugin.getIntProp("power"));
+                    FetchBlocksResult fetchBlocksResult = new FetchBlocksResult();
+                    List<Future<Boolean>> fetchFutures = new ArrayList<Future<Boolean>>();
+                    List<SingleFetch> fetches = new ArrayList<SingleFetch>();
+                    for (Block requestedBlock : requestedBlocks) {
+                        // fetch next block that has not been fetched yet
+                        if (!requestedBlock.isFetchInProgress()) {
+                            continue;
+                        }
+                        SingleFetch singleFetch = new SingleFetch(this, requestedBlock, true);
+                        fetches.add(singleFetch);
+                        Future<Boolean> fetchFuture = executor.submit(singleFetch);
+                        fetchFutures.add(fetchFuture);
+                    }
+                    while (fetchFutures.size() > 0) {
+                        // check if we can bail early by predicting pessimistic and optimistic
+                        // persistence rates for the unfinished blocks
+                        int total = requestedBlocks.size();
+                        int missing = total - (fetchBlocksResult.successful + fetchBlocksResult.failed);
+                        double pessimisticRate = (double) fetchBlocksResult.successful / total;
+                        double optimisticRate = (double) (fetchBlocksResult.successful + missing) / total;
+                        double toleratedRate = (double) plugin.getIntProp("splitfile_tolerance") / 100;
+                        if ((pessimisticRate >= toleratedRate && optimisticRate >= toleratedRate) ||
+                            (pessimisticRate < toleratedRate && optimisticRate < toleratedRate)) {
+                            log(segment.getId(), "<b>-> detected foregone conclusion, terminating prematurely</b>", 1, 1);
+                            break;
+                        }
+                        
+                        Boolean success = false;
+                        for (Future<Boolean> fetchFuture : fetchFutures) {
+                            if (fetchFuture.isDone()) {
+                                fetchBlocksResult.addResult(fetchFuture.get());
+                                fetchFutures.remove(fetchFuture);
+                                success = true;
 
+                                int finished = fetchBlocksResult.failed+fetchBlocksResult.successful;
+                                int logInterval = Math.max(1, requestedBlocks.size() / 8);
+                                if (finished % logInterval == 0) {
+                                    String log = (finished) + "/" + String.valueOf(requestedBlocks.size()) +
+                                            " blocks fetched (" + (fetchBlocksResult.successful) + "/" +
+                                            (fetchBlocksResult.failed) + ", " +
+                                            ((int) (fetchBlocksResult.calculatePersistenceRate() * 100)) + "%)";
+                                    log(segment.getId(), log, 1, 1);
+                                }
+                                break;
+                            }
+                        }
+                        if (!success) {
+                            Thread.sleep(1000);
+                        }
+                    }
+
+                    executor.shutdownNow();
+                    for (SingleFetch fetch : fetches) {
+                        fetch.setInterrupt();
+                    }
+                    
                     double persistenceRate = fetchBlocksResult.calculatePersistenceRate();
-                    if (persistenceRate >= (double) plugin.getIntProp("splitfile_tolerance") / 100) {
+                    double toleratedRate = (double) plugin.getIntProp("splitfile_tolerance") / 100;
+                    if (persistenceRate >= toleratedRate) {
                         doReinsertions = false;
                         segment.regFetchSuccess(persistenceRate);
                         updateSegmentStatistic(segment, true);

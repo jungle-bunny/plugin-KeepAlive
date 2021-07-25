@@ -31,6 +31,7 @@ import java.util.concurrent.Callable;
 public class SingleFetch extends SingleJob implements Callable<Boolean> {
 
     private final boolean persistenceCheck;
+    private boolean interrupt = false;
 
     public SingleFetch(Reinserter reinserter, Block block, boolean persistenceCheck) {
         super(reinserter, "fetch", block);
@@ -38,6 +39,11 @@ public class SingleFetch extends SingleJob implements Callable<Boolean> {
         this.persistenceCheck = persistenceCheck;
     }
 
+    public void setInterrupt() {
+        interrupt = true;
+        block.setResultLog("-> fetch interrupted");
+    }
+    
     @Override
     public Boolean call() {
         Thread.currentThread().setName("KeepAlive SingleFetch");
@@ -66,7 +72,7 @@ public class SingleFetch extends SingleJob implements Callable<Boolean> {
                 block.setResultLog("-> fetch error: " + e.getMessage());
             }
 
-            if (Thread.currentThread().isInterrupted()) {
+            if (Thread.currentThread().isInterrupted() || interrupt) {
                 return false;
             }
 
