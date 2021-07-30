@@ -267,10 +267,8 @@ public final class Reinserter extends Thread {
 
                     // select prove blocks
                     ArrayList<Block> requestedBlocks = new ArrayList<>();
-                    // always fetch exactly the configured number of blocks (or half segment size, whichever is smaller)
-                    int splitfileTestSize = Math.min(
-                            plugin.getIntProp("splitfile_test_size"),
-                            (int) Math.ceil(segmentSize / 2.0));
+                    // always fetch exactly the configured number of blocks (or segment size, whichever is smaller)
+                    int splitfileTestSize = Math.min(plugin.getIntProp("splitfile_test_size"), segmentSize);
 
                     for (int i = 0; requestedBlocks.size() < splitfileTestSize; i++) {
                         if (i == segmentSize) {
