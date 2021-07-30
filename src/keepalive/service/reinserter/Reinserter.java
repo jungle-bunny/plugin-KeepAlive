@@ -283,7 +283,8 @@ public final class Reinserter extends Thread {
                         }
                     }
                     
-                    FetchBlocksResult fetchBlocksResult = fetchBlocks(segment, requestedBlocks);
+                    FetchBlocksResult fetchBlocksResult = new FetchBlocksResult();
+                    fetchBlocks(fetchBlocksResult, segment, requestedBlocks);
 
                     double persistenceRate = fetchBlocksResult.calculatePersistenceRate();
                     if (persistenceRate >= (double) plugin.getIntProp("splitfile_tolerance") / 100) {
@@ -313,7 +314,7 @@ public final class Reinserter extends Thread {
                             }
                         }
 
-                        fetchBlocksResult = fetchBlocks(segment, requestedBlocks);
+                        fetchBlocks(fetchBlocksResult, segment, requestedBlocks);
 
                         persistenceRate = fetchBlocksResult.calculatePersistenceRate();
                         if (persistenceRate >= (double) plugin.getIntProp("splitfile_tolerance") / 100.0) {
@@ -520,9 +521,8 @@ public final class Reinserter extends Thread {
         }
     }
     
-    private FetchBlocksResult fetchBlocks(Segment segment, ArrayList<Block> requestedBlocks) throws InterruptedException, Exception {
+    private void fetchBlocks(FetchBlocksResult fetchBlocksResult, Segment segment, ArrayList<Block> requestedBlocks) throws InterruptedException, Exception {
         ExecutorService executor = Executors.newFixedThreadPool(plugin.getIntProp("power"));
-        FetchBlocksResult fetchBlocksResult = new FetchBlocksResult();
         try {
             List<Future<Boolean>> fetchFutures = new ArrayList<Future<Boolean>>();
             for (Block requestedBlock : requestedBlocks) {
@@ -569,7 +569,7 @@ public final class Reinserter extends Thread {
                 executor.shutdownNow();
             }
         }
-        return fetchBlocksResult;
+        return;
     }
 
     private void insertBlocks(Segment segment) throws InterruptedException, Exception {
