@@ -309,6 +309,14 @@ public final class Reinserter extends Thread {
                             (pessimisticRate < toleratedRate && optimisticRate < toleratedRate)) {
                             // interrupted threads are silently completed in the background
                             log(segment.getId(), "<b>-> detected foregone conclusion, moving on</b>", 1, 1);
+                            // freenet client ignores InterruptedException so we use a custom interrupt
+                            for (SingleFetch fetch : fetches) {
+                                fetch.setInterrupt();
+                            }
+                            // record the pessimistic result for user statistics
+                            for (int i = 0; i < missing; i++) {
+                                fetchBlocksResult.addResult(false);
+                            }
                             break;
                         }
 
@@ -335,11 +343,7 @@ public final class Reinserter extends Thread {
                             Thread.sleep(1000);
                         }
                     }
-
                     executor.shutdownNow();
-                    for (SingleFetch fetch : fetches) {
-                        fetch.setInterrupt();
-                    }
 
                     double persistenceRate = fetchBlocksResult.calculatePersistenceRate();
                     double toleratedRate = (double) plugin.getIntProp("splitfile_tolerance") / 100;
