@@ -72,8 +72,8 @@ public class AdminPage extends PageBase {
                 }
 
                 // modify timeslot to heal single url
-                if (getParam("single_url_timeslot") != null) {
-                    setIntPropByParam("single_url_timeslot", 1);
+                if (getParam("single_url_timeslot2") != null) {
+                    setIntPropByParam("single_url_timeslot2", 1);
                     saveProp();
                 }
 
@@ -151,7 +151,7 @@ public class AdminPage extends PageBase {
         html = new StringBuilder(html.toString().replaceAll("#2", getProp("loglevel")));
         html = new StringBuilder(html.toString().replaceAll("#3", getProp("splitfile_tolerance")));
         html = new StringBuilder(html.toString().replaceAll("#4", getProp("splitfile_test_size")));
-        html = new StringBuilder(html.toString().replaceAll("#5", getProp("single_url_timeslot")));
+        html = new StringBuilder(html.toString().replaceAll("#5", getProp("single_url_timeslot2")));
         addBox("Configuration", html.toString(), "page-kp-config");
     }
 

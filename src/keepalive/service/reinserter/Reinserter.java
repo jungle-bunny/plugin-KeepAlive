@@ -91,7 +91,7 @@ public final class Reinserter extends Thread {
             plugin.clearLog(plugin.getLogFilename(siteId));
             isActive(true);
             long startedAt = System.currentTimeMillis();
-            long timeLeft = TimeUnit.HOURS.toMillis(plugin.getIntProp("single_url_timeslot"));
+            long timeLeft = TimeUnit.MINUTES.toMillis(plugin.getIntProp("single_url_timeslot2"));
 
             FreenetURI uri = new FreenetURI(uriProp);
 

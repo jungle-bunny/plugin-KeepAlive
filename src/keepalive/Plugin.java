@@ -89,14 +89,14 @@ public class Plugin extends PluginBase {
             // initial values
             if (getProp("loglevel") == null) setIntProp("loglevel", 1);
             if (getProp("ids") == null) setProp("ids", "");
-            if (getProp("power") == null) setIntProp("power", 6);
+            if (getProp("power") == null) setIntProp("power", 16);
             if (getProp("active") == null) setIntProp("active", -1);
-            if (getProp("splitfile_tolerance") == null) setIntProp("splitfile_tolerance", 66);
+            if (getProp("splitfile_tolerance") == null) setIntProp("splitfile_tolerance", 75);
             if (getProp("splitfile_test_size") == null) setIntProp("splitfile_test_size", 18);
             if (getProp("log_links") == null) setIntProp("log_links", 1);
             if (getProp("log_utc") == null) setIntProp("log_utc", 1);
             if (getIntProp("log_utc") == 1) setTimezoneUTC();
-            if (getProp("single_url_timeslot") == null) setIntProp("single_url_timeslot", 4);
+            if (getProp("single_url_timeslot2") == null) setIntProp("single_url_timeslot2", 30);
             if (getProp("stackTrace") == null) setProp("stackTrace", "false");
             saveProp();
 
@@ -143,7 +143,7 @@ public class Plugin extends PluginBase {
                             Reinserter reinserter = new Reinserter(plugin, id, latch);
                             reinserter.start();
                             try {
-                                if (!latch.await(getIntProp("single_url_timeslot"), TimeUnit.HOURS)) {
+                                if (!latch.await(getIntProp("single_url_timeslot2"), TimeUnit.MINUTES)) {
                                     reinserter.interrupt();
                                     log("Terminated reinserter " + id + " by timeout");
                                 }
