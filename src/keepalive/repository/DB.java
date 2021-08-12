@@ -9,7 +9,7 @@ public class DB {
 
     private static final String JDBC_DRIVER = "org.h2.Driver";
     private static final String DB_URL = "jdbc:h2:" +
-            System.getProperty("user.dir") + File.separator + "KeepAlive" + File.separator + "keppalive";
+            System.getProperty("user.dir") + File.separator + "KeepAlive" + File.separator + "keepalive";
     private static final String USER = "sa";
     private static final String PASS = "";
 

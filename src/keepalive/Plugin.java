@@ -79,9 +79,20 @@ public class Plugin extends PluginBase {
                  Statement statement = connection.createStatement()) {
                 String sql = "CREATE TABLE IF NOT EXISTS Block (" +
                         "uri VARCHAR(256) PRIMARY KEY, " +
-                        "data VARBINARY(32768) not null, " +
+                        "data VARBINARY(32768), " +
+                        "id INTEGER, " +
+                        "file_id INTEGER, " +
+                        "segment_id INTEGER, " +
+                        "is_data BOOLEAN, " +
                         "last_access TIMESTAMP DEFAULT CURRENT_TIMESTAMP)";
                 statement.executeUpdate(sql);
+            } catch (Exception e) {
+                log(e.getMessage(), e);
+            }
+            try (Connection connection = DB.getConnection();
+                    Statement statement = connection.createStatement()) {
+                   String sql = "CREATE INDEX idx_file_id ON Block(file_id);";
+                   statement.executeUpdate(sql);
             } catch (Exception e) {
                 log(e.getMessage(), e);
             }
@@ -256,10 +267,6 @@ public class Plugin extends PluginBase {
         return "log" + siteId + ".txt";
     }
 
-    public String getBlockListFilename(int siteId) {
-        return "keys" + siteId + ".txt";
-    }
-
     @Override
     public void saveProp() {
         if (propSavingTimestamp < System.currentTimeMillis() - 10 * 1000) {
@@ -300,27 +307,16 @@ public class Plugin extends PluginBase {
             stopReinserter();
         }
 
-        // remove log and key files
+        // remove log files
         File file = new File(getPluginDirectory() + getLogFilename(id));
         if (file.exists()) {
             if (!file.delete()) {
                 log("Plugin.removeUri(): remove log files was not successful.", 1);
             }
         }
-        file = new File(getPluginDirectory() + getBlockListFilename(id));
-        if (file.exists()) {
-            if (!file.delete()) {
-                log("Plugin.removeUri(): remove key files was not successful.", 1);
-            }
-        }
-
-        // remove top block from db
-        try {
-            BlockRepository.getInstance(this).delete(
-                    Client.normalizeUri(new FreenetURI(getProp("uri_" + id))).toString());
-        } catch (MalformedURLException e) {
-            log("Can't remove top block from db", e);
-        }
+        
+        // remove blocks from db
+        BlockRepository.getInstance(this).deleteByFileID(id);
 
         // remove items
         removeProp("uri_" + id);

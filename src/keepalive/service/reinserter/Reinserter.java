@@ -267,10 +267,10 @@ public final class Reinserter extends Thread {
 
                     // select prove blocks
                     ArrayList<Block> requestedBlocks = new ArrayList<>();
-                    // always fetch exactly the configured number of blocks (or half segment size, whichever is smaller)
+                    // always fetch exactly the configured number of blocks (or segment size, whichever is smaller)
                     int splitfileTestSize = Math.min(
                             plugin.getIntProp("splitfile_test_size"),
-                            (int) Math.ceil(segmentSize / 2.0));
+                            segmentSize);
 
                     for (int i = 0; requestedBlocks.size() < splitfileTestSize; i++) {
                         if (i == segmentSize) {
@@ -704,42 +704,15 @@ public final class Reinserter extends Thread {
     }
 
     private void saveBlockUris() throws IOException {
-        File f = new File(plugin.getPluginDirectory() + plugin.getBlockListFilename(siteId));
-        if (f.exists()) {
-            if (!f.delete()) {
-                log("Reinserter.saveBlockUris(): remove block list log files was not successful.", 0);
-            }
-        }
-
-        try (RandomAccessFile file = new RandomAccessFile(f, "rw")) {
-            file.setLength(0);
-            for (Block block : blocks.values()) {
-                if (file.getFilePointer() > 0) {
-                    file.writeBytes("\n");
-                }
-                String type = "d";
-                if (!block.isDataBlock()) {
-                    type = "c";
-                }
-                file.writeBytes(block.getUri().toString() + "#" + block.getSegmentId() + "#" + block.getId() + "#" + type);
-            }
-        }
+        BlockRepository repo = BlockRepository.getInstance(plugin);
+        repo.deleteByFileID(siteId);
+        repo.saveAll(blocks.values(), siteId);
     }
 
     private synchronized void loadBlockUris() throws IOException {
-        try (RandomAccessFile file = new RandomAccessFile(
-                plugin.getPluginDirectory() + plugin.getBlockListFilename(siteId), "r")) {
-
-            String values;
-            while ((values = file.readLine()) != null) {
-                String[] aValues = values.split("#");
-                FreenetURI uri = new FreenetURI(aValues[0]);
-                int segmentId = Integer.parseInt(aValues[1]);
-                int blockId = Integer.parseInt(aValues[2]);
-                boolean isDataBlock = aValues[3].equals("d");
-                blocks.put(uri, new Block(uri, segmentId, blockId, isDataBlock));
-            }
-
+        BlockRepository repo = BlockRepository.getInstance(plugin);
+        for (Block block : repo.loadByFileID(siteId)) {
+            blocks.put(block.getUri(), block);
         }
     }
 
@@ -755,7 +728,7 @@ public final class Reinserter extends Thread {
         // constructs top level simple manifest (= first action on a new uri)
         if (metadata == null) {
             FetchResult fetchResult = Client.fetch(uri, plugin.getFreenetClient());
-            BlockRepository.getInstance(plugin).saveOrUpdate(uri.toString(), fetchResult.asByteArray());
+            BlockRepository.getInstance(plugin).saveOrUpdate(uri.toString(), fetchResult.asByteArray(), siteId);
 
             metadata = fetchManifest(uri, null, null);
             if (metadata == null) {
@@ -1224,9 +1197,11 @@ public final class Reinserter extends Thread {
 
     public synchronized void updateSegmentStatistic(Segment segment, boolean success) {
         String successProp = plugin.getProp("success_segments_" + siteId);
-        if (success) {
-            successProp = successProp.substring(0, segment.getId()) + "1" + successProp.substring(segment.getId() + 1);
+        String result = "1";
+        if (!success) {
+            result = "2";
         }
+        successProp = successProp.substring(0, segment.getId()) + result + successProp.substring(segment.getId() + 1);
         plugin.setProp("success_segments_" + siteId, successProp);
         plugin.saveProp();
     }
