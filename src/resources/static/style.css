@@ -157,3 +157,18 @@ input[type="text"] {
     padding-bottom: 8em;
   }
 }
+
+div.sitesBox {
+  height: 400px;
+  overflow: auto;
+}
+
+div.logBox {
+  height: 400px;
+  overflow: auto;
+}
+
+div.historyBox {
+  height: 400px;
+  overflow: auto;
+}

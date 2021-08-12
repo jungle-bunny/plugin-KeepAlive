@@ -122,7 +122,7 @@ public class AdminPage extends PageBase {
     }
 
     private void historyBox(int[] ids) throws Exception {
-        StringBuilder html = new StringBuilder("<table>");
+        StringBuilder html = new StringBuilder("<div class=\"historyBox\"><table>");
         for (int id : ids) {
             html.append("<tr><td>")
                     .append(getShortUri(id))
@@ -141,7 +141,7 @@ public class AdminPage extends PageBase {
                     .append(formPassword)
                     .append("\">clear</a></td></tr>");
         }
-        html.append("</table>");
+        html.append("</table></div>");
         addBox("Lowest rate of blocks availability (monthly)", html.toString(), "page-kp-rate");
     }
 
@@ -169,7 +169,7 @@ public class AdminPage extends PageBase {
             }
 
             StringBuilder html = new StringBuilder(
-                    ("<small>" + log + "</small>")
+                    ("<div class=\"logBox\"><small>" + log + "</small></div>")
                             .replaceAll("\n", "<br>")
                             .replaceAll(" {2}", "&nbsp; &nbsp; "));
 
@@ -183,7 +183,7 @@ public class AdminPage extends PageBase {
 
     private void sitesBox(int[] ids) throws Exception {
         StringBuilder html = new StringBuilder(html("add_key", formPassword))
-                .append("<br><table><tr style=\"text-align:center;\">")
+                .append("<br><div class=\"sitesBox\"><table><tr style=\"text-align:center;\">")
                 .append("<td>URI</td><td>total<br>blocks</td>")
                 .append("<td>available<br>blocks</td><td>missed<br>blocks</td>")
                 .append("<td>blocks<br>availability</td><td>segments<br>availability</td>")
@@ -249,7 +249,7 @@ public class AdminPage extends PageBase {
             html.append("</tr>");
         }
 
-        html.append("</table>");
+        html.append("</table></div>");
         addBox("Add or remove a key", html.toString(), "page-kp-keys");
     }
 
